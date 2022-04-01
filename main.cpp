@@ -1,3 +1,5 @@
+#include "VBO.h"
+#include "VAO.h"
 #include "minecraft.h"
 #include "PerlinNoise.h"
 #include <glad/glad.h>
@@ -115,6 +117,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		}
 	}
+	else if (key == GLFW_KEY_P && action == GLFW_PRESS) //Print position
+	{
+		printf("Position:%f,%f,%f \n",camera.position.x,camera.position.y,camera.position.z);
+	}
 }
 
 //relatively rotates something around a point
@@ -178,6 +184,9 @@ int main()
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 
+
+	Shader lineShader("C:/Programming_projects/Open-GL/shaders/vert_line.glsl", "C:/Programming_projects/Open-GL/shaders/frag_line.glsl");
+
 	//create a shader program from a vert and frag path
 	Shader multicolor("C:/Programming_projects/Open-GL/shaders/vert.glsl", "C:/Programming_projects/Open-GL/shaders/frag.glsl");
 	multicolor.use();
@@ -202,7 +211,6 @@ int main()
 		// load image, create texture and generate mipmaps
 		int width, height, nrChannels;
 		stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-		// The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
 		unsigned char* data = stbi_load("C:/Programming_projects/Open-GL/textures/dirt.jpg", &width, &height, &nrChannels, 0);
 		if (data)
 		{
@@ -253,6 +261,10 @@ int main()
 	// set up vertex data (and buffer(s)) and configure vertex attributes
 	// ------------------------------------------------------------------
 
+	float lineVerts[] = {
+	0.0f,50.0f,0.0f,
+	10.0f,50.0f,0.0f
+	};
 
 	float vertices[] = {
 	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -311,9 +323,24 @@ int main()
 	glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
 
+	unsigned int lineVBO, lineVAO;
 	unsigned int VBO, VAO;
 	glGenVertexArrays(1, &VAO); // we can also generate multiple VAOs or buffers at the same time
 	glGenBuffers(1, &VBO);
+
+	glGenVertexArrays(1, &lineVAO); // we can also generate multiple VAOs or buffers at the same time
+	glGenBuffers(1, &lineVBO);
+
+	// line setup
+	// --------------------
+	glBindVertexArray(lineVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(lineVerts), lineVerts, GL_STATIC_DRAW);
+
+	// position attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
 	// first triangle setup
 	// --------------------
 	glBindVertexArray(VAO);
@@ -424,6 +451,22 @@ int main()
 				}
 			}
 		}
+
+		lineShader.use();
+		glBindVertexArray(lineVAO);
+
+		model = glm::mat4(1.0f);
+
+		modelLoc = glGetUniformLocation(multicolor.ID, "model");
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+		viewLoc = glGetUniformLocation(multicolor.ID, "view");
+		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+		projLoc = glGetUniformLocation(multicolor.ID, "projection");
+		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+		glDrawArrays(GL_LINES, 0, 2);
 
 		//for (unsigned int i = 0; i < 10; i++)
 		//{
