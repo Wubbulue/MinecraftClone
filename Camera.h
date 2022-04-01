@@ -1,3 +1,8 @@
+#ifndef CAMERA_HEADER
+#define CAMERA_HEADER
+
+
+
 #include <GLFW/glfw3.h>
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -6,13 +11,12 @@
 // Default camera values
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
-const float SPEED = 2.5f;
+const float SPEED = 10.0f;
 const float SENSITIVITY = 0.1f;
 const float ZOOM = 45.0f;
 
 class Camera {
 public:
-	bool fpsMode = true;
 	glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 direction= glm::vec3(0.0f, 0.0f, -1.0f);
 	glm::vec3 up = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -46,3 +50,4 @@ public:
 	void processSroll(float offset);
 
 };
+#endif // !CAMERA_HEADER

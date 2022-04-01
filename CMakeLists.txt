@@ -4,6 +4,8 @@ set (CMAKE_CXX_STANDARD 17)
 #find_package(OpenGL REQUIRED)
 
  
+find_package(OpenCV REQUIRED )
+INCLUDE_DIRECTORIES( ${OpenCV_INCLUDE_DIRS} )
 
 set (ThirdParty ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty)
 
@@ -14,11 +16,11 @@ message(${ThirdParty})
 PROJECT (GL_Practice)
 
 
-add_executable( GL_Practice main.cpp shader.h stb_image.h camera.h camera.cpp)
+add_executable( GL_Practice main.cpp shader.h stb_image.h camera.h camera.cpp minecraft.h minecraft.cpp PerlinNoise.h)
 
 include_directories(${ThirdParty}/include ${CMAKE_CURRENT_SOURCE_DIR}/glm)
 
 
-TARGET_LINK_LIBRARIES (GL_Practice PUBLIC ${ThirdParty}/lib/glfw/glfw3.lib glad)         
+TARGET_LINK_LIBRARIES (GL_Practice PUBLIC ${ThirdParty}/lib/glfw/glfw3.lib glad ${OpenCV_LIBS})         
 
 

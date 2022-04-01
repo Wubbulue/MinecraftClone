@@ -1,3 +1,5 @@
+#include "minecraft.h"
+#include "PerlinNoise.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "shader.h"
@@ -6,6 +8,9 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "Camera.h"
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -18,8 +23,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 
 // settings
-unsigned int SCR_WIDTH = 800;
-unsigned int SCR_HEIGHT = 800;
+unsigned int SCR_WIDTH = 1200;
+unsigned int SCR_HEIGHT = 1000;
 
 float mixAmount = 0.5f;
 float fov = 45.0f;
@@ -28,6 +33,9 @@ const float mouseSensitivity = 0.1f;
 
 
 Camera camera;
+
+Chunk chunk(123489u);
+bool wireframe = false;
 
 
 
@@ -93,25 +101,19 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 //will only get called when a key is pressed
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (key == GLFW_KEY_UP && action == GLFW_PRESS)
+	if (key == GLFW_KEY_N && action == GLFW_PRESS) //regenerate chunks
 	{
-		//mixAmount += 0.05f;
-		fov += 1.0f;
+		chunk.regenerate();
 	}
-	else if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
-
-		//mixAmount -= 0.05f;
-		fov -= 1.0f;
-	}
-	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-
-		//mixAmount -= 0.05f;
-		camHeight -= 0.05f;
-	}
-	else if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS) {
-
-		//mixAmount -= 0.05f;
-		camHeight += 0.05f;
+	else if (key == GLFW_KEY_T && action == GLFW_PRESS) //toggle wireframes
+	{
+		wireframe = !wireframe;
+		if (wireframe) {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		}
+		else {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
 	}
 }
 
@@ -126,7 +128,9 @@ void rotateAboutPoint(glm::mat4 &mat,float rotationAmount, float xOffset, float 
 int main()
 {
 
+
 	//camera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
+	camera.position.y = 50.0f;
 
 
 	// glfw: initialize and configure
@@ -177,7 +181,7 @@ int main()
 	//create a shader program from a vert and frag path
 	Shader multicolor("C:/Programming_projects/Open-GL/shaders/vert.glsl", "C:/Programming_projects/Open-GL/shaders/frag.glsl");
 	multicolor.use();
-	unsigned int texture1, texture2;
+	unsigned int dirtTexture, stoneTexture;
 
 	{
 		//--------------------------TEXTURES---------------------------------------------------
@@ -191,15 +195,15 @@ int main()
 
 		// load and create a texture 
 		// -------------------------
-		// texture 1
+		// Dirt
 		// ---------
-		glGenTextures(1, &texture1);
-		glBindTexture(GL_TEXTURE_2D, texture1);
+		glGenTextures(1, &dirtTexture);
+		glBindTexture(GL_TEXTURE_2D, dirtTexture);
 		// load image, create texture and generate mipmaps
 		int width, height, nrChannels;
 		stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
 		// The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
-		unsigned char* data = stbi_load("C:/Programming_projects/Open-GL/textures/container.jpg", &width, &height, &nrChannels, 0);
+		unsigned char* data = stbi_load("C:/Programming_projects/Open-GL/textures/dirt.jpg", &width, &height, &nrChannels, 0);
 		if (data)
 		{
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -210,10 +214,11 @@ int main()
 			std::cout << "Failed to load texture" << std::endl;
 		}
 		stbi_image_free(data);
-		// texture 2
+
+		// Stone
 		// ---------
-		glGenTextures(1, &texture2);
-		glBindTexture(GL_TEXTURE_2D, texture2);
+		glGenTextures(1, &stoneTexture);
+		glBindTexture(GL_TEXTURE_2D, stoneTexture);
 		// set the texture wrapping parameters
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -221,11 +226,10 @@ int main()
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		// load image, create texture and generate mipmaps
-		data = stbi_load("C:/Programming_projects/Open-GL/textures/awesomeface.png", &width, &height, &nrChannels, 0);
+		data = stbi_load("C:/Programming_projects/Open-GL/textures/stone.jpg", &width, &height, &nrChannels, 0);
 		if (data)
 		{
-			// note that the awesomeface.png has transparency and thus an alpha channel, so make sure to tell OpenGL the data type is of GL_RGBA
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
 		else
@@ -239,9 +243,7 @@ int main()
 		multicolor.use(); // don't forget to activate/use the shader before setting uniforms!
 
 		// either set it manually like so:
-		multicolor.setInt("texture1", 0);
-		// or set it via the texture class
-		multicolor.setInt("texture2", 1);
+		multicolor.setInt("texture", 0);
 		//-------------------------------------------------------------------------------------------
 	}
 
@@ -333,9 +335,11 @@ int main()
 	// note that we're translating the scene in the reverse direction of where we want to move
 	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -5.0f));
 	glm::mat4 projection = glm::mat4(1.0f);
-	projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+	projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
 
 
+	chunk.empty();
+	chunk.populateBlocks();
 
 	// render loop
 	// -----------
@@ -364,9 +368,9 @@ int main()
 
 		// bind textures on corresponding texture units
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture1);
+		glBindTexture(GL_TEXTURE_2D, dirtTexture);
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture2);
+		glBindTexture(GL_TEXTURE_2D, stoneTexture);
 
 		multicolor.use();
 		multicolor.setFloat("mixAmount", mixAmount);
@@ -396,26 +400,51 @@ int main()
 
 		glBindVertexArray(VAO);
 
-		for (unsigned int i = 0; i < 10; i++)
-		{
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePositions[i]);
-			float angle = 20.0f * i;
-			if (i == 0) {
-				model = glm::translate(model, glm::vec3(0.5f,-0.5f,-0.5f));
-				model = glm::rotate(model, timeValue, glm::vec3(1.0f, 1.0f, 0.0f));
-				model = glm::translate(model, glm::vec3(-0.5f,0.5f,0.5f));
-			}
-			else if (i % 3 == 0) {
-				model = glm::rotate(model, glm::radians(angle)+timeValue, glm::vec3(1.0f, 0.3f, 0.5f));
-			}
-			else {
-				model = glm::rotate(model, glm::radians(angle)-timeValue, glm::vec3(1.0f, 0.3f, 0.5f));
-			}
-			multicolor.setMat4("model", model);
+		for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+			
+			for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+				for (unsigned int y = 0; y < WORLD_HEIGHT; y++) {
 
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+					auto blockType = chunk.blocks[x][z][y].type;
+					if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)){
+						continue;
+					}
+					glm::vec3 position(float(x), float(y), float(z));
+					glm::mat4 model = glm::mat4(1.0f);
+					model = glm::translate(model, glm::vec3(float(x),float(y),float(z)));
+					multicolor.setMat4("model", model);
+
+					if (blockType == BlockType::Dirt) {
+						multicolor.setInt("texture", 0);
+					} else if (blockType == BlockType::Stone) {
+						multicolor.setInt("texture", 1);
+					} 
+
+					glDrawArrays(GL_TRIANGLES, 0, 36);
+				}
+			}
 		}
+
+		//for (unsigned int i = 0; i < 10; i++)
+		//{
+		//	glm::mat4 model = glm::mat4(1.0f);
+		//	model = glm::translate(model, cubePositions[i]);
+		//	float angle = 20.0f * i;
+		//	if (i == 0) {
+		//		model = glm::translate(model, glm::vec3(0.5f,-0.5f,-0.5f));
+		//		model = glm::rotate(model, timeValue, glm::vec3(1.0f, 1.0f, 0.0f));
+		//		model = glm::translate(model, glm::vec3(-0.5f,0.5f,0.5f));
+		//	}
+		//	else if (i % 3 == 0) {
+		//		model = glm::rotate(model, glm::radians(angle)+timeValue, glm::vec3(1.0f, 0.3f, 0.5f));
+		//	}
+		//	else {
+		//		model = glm::rotate(model, glm::radians(angle)-timeValue, glm::vec3(1.0f, 0.3f, 0.5f));
+		//	}
+		//	multicolor.setMat4("model", model);
+
+		//	glDrawArrays(GL_TRIANGLES, 0, 36);
+		//}
 
 
 
