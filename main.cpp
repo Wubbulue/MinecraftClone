@@ -1,3 +1,5 @@
+#include <memory>
+#include "line.h"
 #include "VBO.h"
 #include "VAO.h"
 #include "minecraft.h"
@@ -39,6 +41,10 @@ Camera camera;
 Chunk chunk(123489u);
 bool wireframe = false;
 
+const float lineLength = 30.0f;
+std::vector<std::unique_ptr<Line>> cameraLines;
+std::vector<int> testVec;
+
 
 
 
@@ -61,10 +67,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
-		double xpos, ypos;
-		//getting cursor position
-		glfwGetCursorPos(window, &xpos, &ypos);
-		std::cout << "Cursor Position at: " << xpos << ", " << ypos << " Normalized: "<<2*((xpos/SCR_WIDTH)-0.5)<< ", "<< -2*((ypos/SCR_HEIGHT)-0.5)<<std::endl;
+
+		glm::vec3 start = camera.position;
+		glm::vec3 end = start+(camera.direction * lineLength);
+		cameraLines.emplace_back(std::make_unique<Line>(start, end, glm::vec3(1.0f, 0.0f, 0.0f)));
+
 	}
 }
 
@@ -120,6 +127,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	else if (key == GLFW_KEY_P && action == GLFW_PRESS) //Print position
 	{
 		printf("Position:%f,%f,%f \n",camera.position.x,camera.position.y,camera.position.z);
+	}
+	else if (key == GLFW_KEY_C && action == GLFW_PRESS) //Clear lines
+	{
+		cameraLines.clear();
+	}
+	else if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+		glfwSetWindowShouldClose(window, true);
 	}
 }
 
@@ -323,23 +337,18 @@ int main()
 	glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
 
-	unsigned int lineVBO, lineVAO;
+	VBO lineVBO(lineVerts,sizeof(lineVerts));
+	VAO lineVAO;
 	unsigned int VBO, VAO;
 	glGenVertexArrays(1, &VAO); // we can also generate multiple VAOs or buffers at the same time
 	glGenBuffers(1, &VBO);
 
-	glGenVertexArrays(1, &lineVAO); // we can also generate multiple VAOs or buffers at the same time
-	glGenBuffers(1, &lineVBO);
 
 	// line setup
 	// --------------------
-	glBindVertexArray(lineVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(lineVerts), lineVerts, GL_STATIC_DRAW);
+	lineVAO.Bind();
+	lineVAO.LinkAttrib(lineVBO,0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
 
-	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
 
 	// first triangle setup
 	// --------------------
@@ -364,6 +373,8 @@ int main()
 	glm::mat4 projection = glm::mat4(1.0f);
 	projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
 
+	
+	//Line line(glm::vec3(0.0f,60.0f,0.0f),glm::vec3(10.0f,50.0f,0.0f),glm::vec3(1.0f,0.0f,0.0f));
 
 	chunk.empty();
 	chunk.populateBlocks();
@@ -376,9 +387,6 @@ int main()
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// input
-		// -----
-		processInput(window);
 
 		// render
 		// ------
@@ -402,18 +410,12 @@ int main()
 		multicolor.use();
 		multicolor.setFloat("mixAmount", mixAmount);
 
-		model = glm::mat4(1.0f);
-		model = glm::rotate(model, timeValue, glm::vec3(1.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, timeValue/2, glm::vec3(0.0f, 1.0f, 0.0f));
-
 
 		//update coordiante transformations
 		projection = glm::mat4(1.0f);
 		projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
 		view = camera.view();
-
-
 
 		int modelLoc = glGetUniformLocation(multicolor.ID, "model");
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -452,42 +454,20 @@ int main()
 			}
 		}
 
-		lineShader.use();
-		glBindVertexArray(lineVAO);
 
 		model = glm::mat4(1.0f);
+		glm::mat4 MVP = projection*view*model;
+		//line.setMVP(MVP);
+		//line.draw();
 
-		modelLoc = glGetUniformLocation(multicolor.ID, "model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-		viewLoc = glGetUniformLocation(multicolor.ID, "view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-		projLoc = glGetUniformLocation(multicolor.ID, "projection");
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-		glDrawArrays(GL_LINES, 0, 2);
-
-		//for (unsigned int i = 0; i < 10; i++)
-		//{
-		//	glm::mat4 model = glm::mat4(1.0f);
-		//	model = glm::translate(model, cubePositions[i]);
-		//	float angle = 20.0f * i;
-		//	if (i == 0) {
-		//		model = glm::translate(model, glm::vec3(0.5f,-0.5f,-0.5f));
-		//		model = glm::rotate(model, timeValue, glm::vec3(1.0f, 1.0f, 0.0f));
-		//		model = glm::translate(model, glm::vec3(-0.5f,0.5f,0.5f));
-		//	}
-		//	else if (i % 3 == 0) {
-		//		model = glm::rotate(model, glm::radians(angle)+timeValue, glm::vec3(1.0f, 0.3f, 0.5f));
-		//	}
-		//	else {
-		//		model = glm::rotate(model, glm::radians(angle)-timeValue, glm::vec3(1.0f, 0.3f, 0.5f));
-		//	}
-		//	multicolor.setMat4("model", model);
-
-		//	glDrawArrays(GL_TRIANGLES, 0, 36);
+		//for (auto& loopLine : cameraLines) {
+		//	loopLine.setMVP(MVP);
+		//	loopLine.draw();
 		//}
+		for (int i = 0; i < cameraLines.size(); i++) {
+			cameraLines[i]->setMVP(MVP);
+			cameraLines[i]->draw();
+		}
 
 
 
@@ -509,13 +489,6 @@ int main()
 	return 0;
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow* window)
-{
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-}
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------

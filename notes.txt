@@ -1,0 +1,8 @@
+first of all, when creating an object and adding it to global vector, prefer emplace because it adds it straight to vector, 
+rather than a copy
+
+next, be careful with object constructer freeing graphics memory, because adding vector elements often reorders them, which will
+cause issues, because to reorder, it calls object destructor
+
+to fix this, i made it a vector of unique pointers, which insures that even if the pointers are getting copied and moved around,
+the underlying objets are only actually destructed when it is time to destruct them 
