@@ -1,3 +1,4 @@
+#include <chrono>
 #include <memory>
 #include "line.h"
 #include "VBO.h"
@@ -23,8 +24,6 @@
 
 //callled on window resize
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-//callled every frame, check input
-void processInput(GLFWwindow* window);
 
 // settings
 unsigned int SCR_WIDTH = 1200;
@@ -43,7 +42,6 @@ bool wireframe = false;
 
 const float lineLength = 30.0f;
 std::vector<std::unique_ptr<Line>> cameraLines;
-std::vector<int> testVec;
 
 
 
@@ -71,6 +69,25 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		glm::vec3 start = camera.position;
 		glm::vec3 end = start+(camera.direction * lineLength);
 		cameraLines.emplace_back(std::make_unique<Line>(start, end, glm::vec3(1.0f, 0.0f, 0.0f)));
+
+		//Logging::funcTime("Eliminate ray intersect", std::bind(&Chunk::eliminateRayIntersection, chunk, std::placeholders::_1, std::placeholders::_2), start, camera.direction);
+		auto t1 = std::chrono::high_resolution_clock::now();
+
+		//Box3 box(glm::vec3(0.0f,0.0f,0.0f),glm::vec3(64.0f,64.0f,64.0f));
+		//Ray ray(start, camera.direction);
+		//box.intersect(ray);
+
+		chunk.eliminateRayIntersection(start, camera.direction);
+		auto t2 = std::chrono::high_resolution_clock::now();
+
+		// floating-point duration: no duration_cast needed
+		std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
+
+		// integral duration: requires duration_cast
+		auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+		
+		std::cout << "Took " << int_ms.count() << " miliseconds to elimnate blocks" << std::endl;
+
 
 	}
 }
@@ -366,15 +383,10 @@ int main()
 
 	//COORDINATE TRANSFORMATIONS
 	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::rotate(model, glm::radians(-80.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 	glm::mat4 view = glm::mat4(1.0f);
-	// note that we're translating the scene in the reverse direction of where we want to move
-	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -5.0f));
 	glm::mat4 projection = glm::mat4(1.0f);
-	projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
 
 	
-	//Line line(glm::vec3(0.0f,60.0f,0.0f),glm::vec3(10.0f,50.0f,0.0f),glm::vec3(1.0f,0.0f,0.0f));
 
 	chunk.empty();
 	chunk.populateBlocks();
@@ -439,7 +451,7 @@ int main()
 						continue;
 					}
 					glm::vec3 position(float(x), float(y), float(z));
-					glm::mat4 model = glm::mat4(1.0f);
+					model = glm::mat4(1.0f);
 					model = glm::translate(model, glm::vec3(float(x),float(y),float(z)));
 					multicolor.setMat4("model", model);
 

@@ -18,7 +18,7 @@ PROJECT (GL_Practice)
 
 add_executable( GL_Practice main.cpp shader.h stb_image.h camera.h camera.cpp 
 minecraft.h minecraft.cpp PerlinNoise.h EBO.cpp EBO.h VBO.cpp VBO.h VAO.cpp VAO.h
-line.cpp line.h)
+line.cpp line.h geometery.h geometery.cpp Logging.h Logging.cpp)
 
 include_directories(${ThirdParty}/include ${CMAKE_CURRENT_SOURCE_DIR}/glm)
 
