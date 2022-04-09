@@ -7,7 +7,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "geometery.h"
 
-const int WORLD_HEIGHT = 64;
+const int CHUNK_HEIGHT = 64;
 const int CHUNK_LENGTH = 64;
 
 
@@ -62,6 +62,8 @@ enum class BlockType {
 	Stone
 };
 
+const char* blockTypeToString(BlockType type);
+
 struct Block {
 	BlockType type = BlockType::Air;
 };
@@ -74,7 +76,7 @@ public:
 
 	siv::PerlinNoise::seed_type seed;
 	//x,z,y
-	Block blocks[CHUNK_LENGTH][CHUNK_LENGTH][WORLD_HEIGHT];
+	Block blocks[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_HEIGHT];
 	Chunk(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
 		populateBlocks();
 	}
@@ -92,6 +94,9 @@ public:
 
 	//generates a list of the triangle geometery for a certain block
 	void getBlockTriangles(int x, int y, int z, Triangle triangles[12]);
+
+	//finds a block and prints its type
+	void pickBlock(glm::vec3 position);
 
 };
 

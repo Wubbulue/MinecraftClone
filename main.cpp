@@ -46,6 +46,7 @@ std::vector<std::unique_ptr<Line>> cameraLines;
 
 
 
+
 void checkCompilation(const char* shaderName, unsigned int shader) {
 
 	int  success;
@@ -73,10 +74,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		//Logging::funcTime("Eliminate ray intersect", std::bind(&Chunk::eliminateRayIntersection, chunk, std::placeholders::_1, std::placeholders::_2), start, camera.direction);
 		auto t1 = std::chrono::high_resolution_clock::now();
 
-		//Box3 box(glm::vec3(0.0f,0.0f,0.0f),glm::vec3(64.0f,64.0f,64.0f));
-		//Ray ray(start, camera.direction);
-		//box.intersect(ray);
-
+		Box3 box(glm::vec3(0.0f,0.0f,0.0f),glm::vec3(64.0f,64.0f,64.0f));
 		chunk.eliminateRayIntersection(start, camera.direction);
 		auto t2 = std::chrono::high_resolution_clock::now();
 
@@ -152,6 +150,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	else if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
+	else if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
+		chunk.pickBlock(camera.position);
+	}
 }
 
 //relatively rotates something around a point
@@ -219,8 +220,11 @@ int main()
 	Shader lineShader("C:/Programming_projects/Open-GL/shaders/vert_line.glsl", "C:/Programming_projects/Open-GL/shaders/frag_line.glsl");
 
 	//create a shader program from a vert and frag path
-	Shader multicolor("C:/Programming_projects/Open-GL/shaders/vert.glsl", "C:/Programming_projects/Open-GL/shaders/frag.glsl");
-	multicolor.use();
+	Shader shaderTexture("C:/Programming_projects/Open-GL/shaders/vert_texture.glsl", "C:/Programming_projects/Open-GL/shaders/frag_texture.glsl");
+	shaderTexture.use();
+
+	Shader diffuseShader("C:/Programming_projects/Open-GL/shaders/vert_diffuse.glsl", "C:/Programming_projects/Open-GL/shaders/frag_diffuse.glsl");
+
 	unsigned int dirtTexture, stoneTexture;
 
 	{
@@ -279,10 +283,10 @@ int main()
 
 		// tell opengl for each sampler to which texture unit it belongs to (only has to be done once)
 		// -------------------------------------------------------------------------------------------
-		multicolor.use(); // don't forget to activate/use the shader before setting uniforms!
+		shaderTexture.use(); // don't forget to activate/use the shader before setting uniforms!
 
 		// either set it manually like so:
-		multicolor.setInt("texture", 0);
+		shaderTexture.setInt("texture", 0);
 		//-------------------------------------------------------------------------------------------
 	}
 
@@ -419,8 +423,7 @@ int main()
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, stoneTexture);
 
-		multicolor.use();
-		multicolor.setFloat("mixAmount", mixAmount);
+		shaderTexture.use();
 
 
 		//update coordiante transformations
@@ -429,14 +432,9 @@ int main()
 
 		view = camera.view();
 
-		int modelLoc = glGetUniformLocation(multicolor.ID, "model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-		int viewLoc = glGetUniformLocation(multicolor.ID, "view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-		int projLoc = glGetUniformLocation(multicolor.ID, "projection");
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+		shaderTexture.setMat4("model", model);
+		shaderTexture.setMat4("view", view);
+		shaderTexture.setMat4("projection", projection);
 
 
 		glBindVertexArray(VAO);
@@ -444,7 +442,7 @@ int main()
 		for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 			
 			for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-				for (unsigned int y = 0; y < WORLD_HEIGHT; y++) {
+				for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
 					auto blockType = chunk.blocks[x][z][y].type;
 					if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)){
@@ -453,12 +451,12 @@ int main()
 					glm::vec3 position(float(x), float(y), float(z));
 					model = glm::mat4(1.0f);
 					model = glm::translate(model, glm::vec3(float(x),float(y),float(z)));
-					multicolor.setMat4("model", model);
+					shaderTexture.setMat4("model", model);
 
 					if (blockType == BlockType::Dirt) {
-						multicolor.setInt("texture", 0);
+						shaderTexture.setInt("texture", 0);
 					} else if (blockType == BlockType::Stone) {
-						multicolor.setInt("texture", 1);
+						shaderTexture.setInt("texture", 1);
 					} 
 
 					glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -467,15 +465,9 @@ int main()
 		}
 
 
+
 		model = glm::mat4(1.0f);
 		glm::mat4 MVP = projection*view*model;
-		//line.setMVP(MVP);
-		//line.draw();
-
-		//for (auto& loopLine : cameraLines) {
-		//	loopLine.setMVP(MVP);
-		//	loopLine.draw();
-		//}
 		for (int i = 0; i < cameraLines.size(); i++) {
 			cameraLines[i]->setMVP(MVP);
 			cameraLines[i]->draw();
