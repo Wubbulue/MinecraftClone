@@ -13,8 +13,6 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "Camera.h"
-#include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -42,6 +40,7 @@ bool wireframe = false;
 
 const float lineLength = 30.0f;
 std::vector<std::unique_ptr<Line>> cameraLines;
+std::vector<glm::vec3> cubes;
 
 
 
@@ -66,25 +65,22 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
-
 		glm::vec3 start = camera.position;
 		glm::vec3 end = start+(camera.direction * lineLength);
 		cameraLines.emplace_back(std::make_unique<Line>(start, end, glm::vec3(1.0f, 0.0f, 0.0f)));
 
-		//Logging::funcTime("Eliminate ray intersect", std::bind(&Chunk::eliminateRayIntersection, chunk, std::placeholders::_1, std::placeholders::_2), start, camera.direction);
 		auto t1 = std::chrono::high_resolution_clock::now();
-
-		Box3 box(glm::vec3(0.0f,0.0f,0.0f),glm::vec3(64.0f,64.0f,64.0f));
-		chunk.eliminateRayIntersection(start, camera.direction);
+		Ray ray(start,camera.direction);
+		chunk.traverseUntilSolid(ray);
 		auto t2 = std::chrono::high_resolution_clock::now();
 
 		// floating-point duration: no duration_cast needed
 		std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
 
 		// integral duration: requires duration_cast
-		auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+		auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 		
-		std::cout << "Took " << int_ms.count() << " miliseconds to elimnate blocks" << std::endl;
+		std::cout << "Took " << int_ms.count() << " microseconds to elimnate blocks" << std::endl;
 
 
 	}
@@ -151,7 +147,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		glfwSetWindowShouldClose(window, true);
 	}
 	else if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
-		chunk.pickBlock(camera.position);
+		chunk.findBlock(camera.position);
 	}
 }
 
@@ -448,9 +444,9 @@ int main()
 					if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)){
 						continue;
 					}
-					glm::vec3 position(float(x), float(y), float(z));
 					model = glm::mat4(1.0f);
-					model = glm::translate(model, glm::vec3(float(x),float(y),float(z)));
+					//offset by half voxel for center
+					model = glm::translate(model, glm::vec3(float(x+0.5f),float(y+0.5f),float(z+0.5f)));
 					shaderTexture.setMat4("model", model);
 
 					if (blockType == BlockType::Dirt) {
@@ -463,6 +459,17 @@ int main()
 				}
 			}
 		}
+		diffuseShader.use();
+		diffuseShader.setMat4("view", view);
+		diffuseShader.setMat4("projection", projection);
+
+		for (auto const& cube : cubes) {
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(cube));
+			diffuseShader.setMat4("model", model);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
+
 
 
 

@@ -44,6 +44,12 @@ public:
     //calculate intersection of box and triangle
     bool intersect(const Ray& r, glm::vec3& intersect1, glm::vec3& intersect2);
 
+    //calculate intersection of box and triangle and return result as a T value
+    bool intersectParametric(const Ray& r, float& intersect1, float& intersect2);
+
+    //check if point is inside box, inclusive at start and exclusive at end
+    bool checkIfInside(glm::vec3 v);
+
 };
 
 #endif // !GEOMETERY_HEADER

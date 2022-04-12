@@ -6,6 +6,8 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "geometery.h"
+#include <cassert>
+#include <limits>
 
 const int CHUNK_HEIGHT = 64;
 const int CHUNK_LENGTH = 64;
@@ -68,9 +70,15 @@ struct Block {
 	BlockType type = BlockType::Air;
 };
 
+struct BlockPosition {
+	uint16_t x,y,z;
+};
+
 class Chunk {
 public:
 
+	//these variables define chunk's position within the world
+	int x = 0, z=0;
 
 
 
@@ -95,8 +103,14 @@ public:
 	//generates a list of the triangle geometery for a certain block
 	void getBlockTriangles(int x, int y, int z, Triangle triangles[12]);
 
-	//finds a block and prints its type
-	void pickBlock(glm::vec3 position);
+	//finds a block and returns its position as x,y,z
+	//block are inclusive at start, and non inclusive at end, except for at chunk border
+	BlockPosition findBlock(glm::vec3 position);
+
+	void traverseUntilSolid(const Ray& ray);
+
+	Box3 getBox();
+
 
 };
 

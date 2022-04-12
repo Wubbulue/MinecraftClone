@@ -119,22 +119,33 @@ void Chunk::getBlockTriangles(int x, int y, int z, Triangle triangles[12]) {
 
 }
 
-void Chunk::pickBlock(glm::vec3 position) {
+BlockPosition Chunk::findBlock(glm::vec3 position) {
 
-	bool inXRange = position.x >= 0 && position.x < CHUNK_LENGTH;
-	bool inYRange = position.y >= 0 && position.y < CHUNK_HEIGHT;
-	bool inZRange = position.z >= 0 && position.z < CHUNK_LENGTH;
+	//TODO: find better assert solution
 
-	if (!inXRange || !inYRange || !inZRange) {
-		printf("Not in range\n");
-		return;
-	}
+	bool inXRange = position.x >= 0 && position.x <= CHUNK_LENGTH;
+	bool inYRange = position.y >= 0 && position.y <= CHUNK_HEIGHT;
+	bool inZRange = position.z >= 0 && position.z <= CHUNK_LENGTH;
 
-	int intx = int(position.x);
-	int inty = int(position.y);
-	int intz = int(position.z);
+	assert(inXRange && inYRange && inZRange);
+	//if (!inXRange || !inYRange || !inZRange) {
+	//	printf("Not in range\n");
+	//}
 
-	printf("Block at [%d,%d,%d] is %s\n",intx,intz,inty,blockTypeToString(blocks[intx][intz][inty].type));
+	uint16_t intx = std::floor(position.x);
+	uint16_t inty = std::floor(position.y);
+	uint16_t intz = std::floor(position.z);
+
+	//include positions at chunk border
+	if (intx == CHUNK_LENGTH) intx--;
+	if (inty == CHUNK_HEIGHT) inty--;
+	if (intz == CHUNK_LENGTH) intz--;
+
+	BlockPosition block_position = {
+		intx,inty,intz
+	};
+
+	return block_position;
 
 
 }
@@ -160,3 +171,112 @@ const char* blockTypeToString(BlockType type) {
 	}
 	
 }
+
+
+void Chunk::traverseUntilSolid(const Ray& ray) {
+	float tMin;
+	float tMax;
+	Box3 box = getBox();
+	glm::vec3 ray_start, ray_end;
+	if (!box.checkIfInside(ray.orig)) {
+		//if it doesn't intersect, then return
+		if (!box.intersect(ray, ray_start, ray_end)) {
+			return;
+		}
+	}
+	else {
+		//only need ending ray intersect, beginning will be our position
+		box.intersect(ray, glm::vec3(), ray_end);
+		ray_start = ray.orig;
+	}
+
+	BlockPosition curPos = findBlock(ray_start - box.bounds[0]);
+	const BlockPosition endPos = findBlock(ray_end - box.bounds[0]);
+
+	int stepX;
+	float tDeltaX;
+	float tMaxX;
+	if (ray.dir.x > 0.0) {
+		stepX = 1;
+		tDeltaX = 1.0f / ray.dir.x;
+		tMaxX = ((curPos.x+1) - ray_start.x) / ray.dir.x;
+	}
+	else if (ray.dir.x < 0.0) {
+		stepX = -1;
+		tDeltaX = 1.0f / -ray.dir.x;
+		tMaxX = (curPos.x - ray_start.x) / ray.dir.x;
+	}
+	else {
+		//never increment x
+		stepX = 0;
+		tMaxX = std::numeric_limits<float>::max();
+		tDeltaX = std::numeric_limits<float>::max();
+	}
+
+	int stepY;
+	float tDeltaY;
+	float tMaxY;
+	if (ray.dir.y > 0.0) {
+		stepY = 1;
+		tDeltaY = 1.0f / ray.dir.y;
+		tMaxY = ((curPos.y+1) - ray_start.y) / ray.dir.y;
+	}
+	else if (ray.dir.y < 0.0) {
+		stepY = -1;
+		tDeltaY = 1.0f / -ray.dir.y;
+		tMaxY = (curPos.y - ray_start.y) / ray.dir.y;
+	}
+	else {
+		stepY = 0;
+		tMaxY = std::numeric_limits<float>::max();
+		tDeltaY = std::numeric_limits<float>::max();
+	}
+
+	int stepZ;
+	float tDeltaZ;
+	float tMaxZ;
+	if (ray.dir.z > 0.0) {
+		stepZ = 1;
+		tDeltaZ = 1.0f / ray.dir.z;
+		tMaxZ = ((curPos.z+1) - ray_start.z) / ray.dir.z;
+	}
+	else if (ray.dir.z < 0.0) {
+		stepZ = -1;
+		tDeltaZ = 1.0f / -ray.dir.z;
+		tMaxZ = (curPos.z - ray_start.z) / ray.dir.z;
+	}
+	else {
+		stepZ = 0;
+		tMaxZ = std::numeric_limits<float>::max();
+		tDeltaZ = std::numeric_limits<float>::max();
+	}
+
+	while (curPos.x != endPos.x  || curPos.z != endPos.z || curPos.y != endPos.y) {
+		if (blocks[curPos.x][curPos.z][curPos.y].type != BlockType::Air) {
+			blocks[curPos.x][curPos.z][curPos.y].type = BlockType::Air;
+			//return;
+		}
+		if (tMaxX < tMaxY && tMaxX < tMaxZ) {
+			// X-axis traversal.
+			curPos.x += stepX;
+			tMaxX += tDeltaX;
+		}
+		else if (tMaxY < tMaxZ) {
+			// Y-axis traversal.
+			curPos.y += stepY;
+			tMaxY += tDeltaY;
+		}
+		else {
+			// Z-axis traversal.
+			curPos.z += stepZ;
+			tMaxZ += tDeltaZ;
+		}
+	}
+}
+
+
+Box3 Chunk::getBox() {
+	return Box3(glm::vec3(x*CHUNK_LENGTH, 0.0f, z*CHUNK_LENGTH), glm::vec3((x+1)*CHUNK_LENGTH, CHUNK_HEIGHT, (z + 1) * CHUNK_LENGTH));
+}
+
+
