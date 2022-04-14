@@ -173,7 +173,7 @@ const char* blockTypeToString(BlockType type) {
 }
 
 
-void Chunk::traverseUntilSolid(const Ray& ray) {
+void Chunk::mineHoleCast(const Ray& ray) {
 	float tMin;
 	float tMax;
 	Box3 box = getBox();
@@ -272,6 +272,114 @@ void Chunk::traverseUntilSolid(const Ray& ray) {
 			tMaxZ += tDeltaZ;
 		}
 	}
+
+}
+
+bool Chunk::findFirstSolid(const Ray& ray, BlockPosition& pos) {
+
+	float tMin;
+	float tMax;
+	Box3 box = getBox();
+	glm::vec3 ray_start, ray_end;
+	if (!box.checkIfInside(ray.orig)) {
+		//if it doesn't intersect, then return
+		if (!box.intersect(ray, ray_start, ray_end)) {
+			return false;
+		}
+	}
+	else {
+		//only need ending ray intersect, beginning will be our position
+		box.intersect(ray, glm::vec3(), ray_end);
+		ray_start = ray.orig;
+	}
+
+	BlockPosition curPos = findBlock(ray_start - box.bounds[0]);
+	const BlockPosition endPos = findBlock(ray_end - box.bounds[0]);
+
+	int stepX;
+	float tDeltaX;
+	float tMaxX;
+	if (ray.dir.x > 0.0) {
+		stepX = 1;
+		tDeltaX = 1.0f / ray.dir.x;
+		tMaxX = ((curPos.x+1) - ray_start.x) / ray.dir.x;
+	}
+	else if (ray.dir.x < 0.0) {
+		stepX = -1;
+		tDeltaX = 1.0f / -ray.dir.x;
+		tMaxX = (curPos.x - ray_start.x) / ray.dir.x;
+	}
+	else {
+		//never increment x
+		stepX = 0;
+		tMaxX = std::numeric_limits<float>::max();
+		tDeltaX = std::numeric_limits<float>::max();
+	}
+
+	int stepY;
+	float tDeltaY;
+	float tMaxY;
+	if (ray.dir.y > 0.0) {
+		stepY = 1;
+		tDeltaY = 1.0f / ray.dir.y;
+		tMaxY = ((curPos.y+1) - ray_start.y) / ray.dir.y;
+	}
+	else if (ray.dir.y < 0.0) {
+		stepY = -1;
+		tDeltaY = 1.0f / -ray.dir.y;
+		tMaxY = (curPos.y - ray_start.y) / ray.dir.y;
+	}
+	else {
+		stepY = 0;
+		tMaxY = std::numeric_limits<float>::max();
+		tDeltaY = std::numeric_limits<float>::max();
+	}
+
+	int stepZ;
+	float tDeltaZ;
+	float tMaxZ;
+	if (ray.dir.z > 0.0) {
+		stepZ = 1;
+		tDeltaZ = 1.0f / ray.dir.z;
+		tMaxZ = ((curPos.z+1) - ray_start.z) / ray.dir.z;
+	}
+	else if (ray.dir.z < 0.0) {
+		stepZ = -1;
+		tDeltaZ = 1.0f / -ray.dir.z;
+		tMaxZ = (curPos.z - ray_start.z) / ray.dir.z;
+	}
+	else {
+		stepZ = 0;
+		tMaxZ = std::numeric_limits<float>::max();
+		tDeltaZ = std::numeric_limits<float>::max();
+	}
+
+	while (curPos.x != endPos.x  || curPos.z != endPos.z || curPos.y != endPos.y) {
+		if (blocks[curPos.x][curPos.z][curPos.y].type != BlockType::Air) {
+			pos = curPos;
+			return true;
+			//return;
+		}
+		if (tMaxX < tMaxY && tMaxX < tMaxZ) {
+			// X-axis traversal.
+			curPos.x += stepX;
+			tMaxX += tDeltaX;
+		}
+		else if (tMaxY < tMaxZ) {
+			// Y-axis traversal.
+			curPos.y += stepY;
+			tMaxY += tDeltaY;
+		}
+		else {
+			// Z-axis traversal.
+			curPos.z += stepZ;
+			tMaxZ += tDeltaZ;
+		}
+	}
+
+	//we didn't find a solid block
+	return false;
+
 }
 
 

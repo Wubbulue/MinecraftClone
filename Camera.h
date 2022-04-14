@@ -1,12 +1,9 @@
-#ifndef CAMERA_HEADER
-#define CAMERA_HEADER
-
+#pragma once
 
 
 #include <GLFW/glfw3.h>
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
 
 // Default camera values
 const float YAW = -90.0f;
@@ -34,8 +31,8 @@ public:
 	Camera();
 
 
-	//check user input and move camera accordingly
-	void moveCamera(GLFWwindow* window,float deltaTime);
+	//check user input and move camera accordingly, if camera is moved returns true
+	bool moveCamera(GLFWwindow* window,float deltaTime);
 
 	//recalculate camera direction vector based on yaw and pitch
 	void updateCameraVectors();
@@ -50,4 +47,3 @@ public:
 	void processSroll(float offset);
 
 };
-#endif // !CAMERA_HEADER

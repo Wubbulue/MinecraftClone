@@ -6,24 +6,40 @@ Camera::Camera()
     updateCameraVectors();
 }
 
-void Camera::moveCamera(GLFWwindow* window, float deltaTime) {
+bool Camera::moveCamera(GLFWwindow* window, float deltaTime) {
+    bool moved = false;
     const float cameraSpeed = MovementSpeed*deltaTime; // adjust accordingly
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         position += cameraSpeed * direction;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        moved = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         position -= cameraSpeed * direction;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        moved = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        moved = true;
         position -= glm::normalize(glm::cross(direction, up)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        moved = true;
         position += glm::normalize(glm::cross(direction, up)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        moved = true;
         position.y += cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        moved = true;
         position.y -= cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
+        moved = true;
         position.y -= cameraSpeed;
+    }
 
     updateCameraVectors();
+    return moved;
 
 }
 

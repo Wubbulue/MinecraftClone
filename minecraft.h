@@ -3,8 +3,6 @@
 
 #include "PerlinNoise.h"
 #include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
 #include "geometery.h"
 #include <cassert>
 #include <limits>
@@ -71,7 +69,17 @@ struct Block {
 };
 
 struct BlockPosition {
-	uint16_t x,y,z;
+	uint16_t x, y, z;
+
+	friend bool operator== (const BlockPosition& b1, const BlockPosition& b2)
+	{
+		return ( (b1.x == b2.x) && (b1.y==b2.y) && (b1.z==b2.z) );
+	}
+
+	friend bool operator!= (const BlockPosition& b1, const BlockPosition& b2)
+	{
+		return ( (b1.x != b2.x) || (b1.y!=b2.y) || (b1.z!=b2.z) );
+	}
 };
 
 class Chunk {
@@ -107,7 +115,11 @@ public:
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
 	BlockPosition findBlock(glm::vec3 position);
 
-	void traverseUntilSolid(const Ray& ray);
+	//mines hole along ray
+	void mineHoleCast(const Ray& ray);
+
+	//traverses until a solid block is found. If none, returns false
+	bool findFirstSolid(const Ray& ray, BlockPosition& pos);
 
 	Box3 getBox();
 

@@ -1,3 +1,4 @@
+#include "Player.h"
 #include <chrono>
 #include <memory>
 #include "line.h"
@@ -33,18 +34,81 @@ float camHeight = 0.0f;
 const float mouseSensitivity = 0.1f;
 
 
+Player player;
 Camera camera;
 
 Chunk chunk(123489u);
 bool wireframe = false;
 
 const float lineLength = 30.0f;
-std::vector<std::unique_ptr<Line>> cameraLines;
-std::vector<glm::vec3> cubes;
+std::vector<Line> cameraLines;
+std::vector<Line> blockLines;
 
 
 
+float outlineVerts[] = {
 
+	0.0f,0.0f,0.0f, //0
+	0.0f,0.0f,1.0f, //1
+	0.0f,1.0f,0.0f, //2
+	0.0f,1.0f,1.0f, //3
+	1.0f,0.0f,0.0f, //4
+	1.0f,0.0f,1.0f, //5
+	1.0f,1.0f,0.0f, //6
+	1.0f,1.0f,1.0f, //7
+
+	
+};
+
+uint8_t bLineIndices[] = {
+	0,1,
+	0,2,
+	0,4,
+	1,3,
+	1,5,
+	2,6,
+	2,3,
+	3,7,
+	4,5,
+	4,6,
+	5,7,
+	6,7,
+};
+
+void updateBlockPlayerLookingAt() {
+	BlockPosition oldPos = player.blockLookingAt;
+	if (chunk.findFirstSolid(Ray(camera.position, camera.direction), player.blockLookingAt)) {
+		player.isLookingAtBlock = true;
+		if (oldPos != player.blockLookingAt) {
+			//TODO: at times this is rendering too many lines, maybe check adjecent blocks for which lines to render
+			//TODO: this block outline suffers from z fighting
+			blockLines.clear();
+
+			float fx = float(player.blockLookingAt.x);
+			float fy = float(player.blockLookingAt.y);
+			float fz = float(player.blockLookingAt.z);
+
+			//12 lines in a cube loop
+			for (int i = 0; i < 12; i++) {
+				//line indexes
+				uint8_t j1 = bLineIndices[i * 2]; 
+				uint8_t j2 = bLineIndices[(i * 2) + 1];
+				j1 *= 3;
+				j2 *= 3;
+
+				glm::vec3 start(fx+outlineVerts[j1],fy+outlineVerts[j1+1],fz+outlineVerts[j1+2]);
+				glm::vec3 end(fx+outlineVerts[j2],fy+outlineVerts[j2+1],fz+outlineVerts[j2+2]);
+
+				blockLines.emplace_back(Line(start, end, glm::vec3(0.2f, 0.2f, 0.2f)));
+
+			}
+		}
+	}
+	else {
+		player.isLookingAtBlock = false;
+		blockLines.clear();
+	}
+}
 
 void checkCompilation(const char* shaderName, unsigned int shader) {
 
@@ -67,11 +131,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	{
 		glm::vec3 start = camera.position;
 		glm::vec3 end = start+(camera.direction * lineLength);
-		cameraLines.emplace_back(std::make_unique<Line>(start, end, glm::vec3(1.0f, 0.0f, 0.0f)));
+		cameraLines.emplace_back(Line(start, end, glm::vec3(1.0f, 0.0f, 0.0f)));
 
 		auto t1 = std::chrono::high_resolution_clock::now();
 		Ray ray(start,camera.direction);
-		chunk.traverseUntilSolid(ray);
+		chunk.mineHoleCast(ray);
 		auto t2 = std::chrono::high_resolution_clock::now();
 
 		// floating-point duration: no duration_cast needed
@@ -109,6 +173,8 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 	lastX = xpos;
 	lastY = ypos;
 	camera.ProcessMouseMovement(xoffset, yoffset);
+	updateBlockPlayerLookingAt();
+	
 
 }
 
@@ -208,6 +274,7 @@ int main()
 
 	//enable z buffer!
 	glEnable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_NEVER);
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -293,8 +360,9 @@ int main()
 	// ------------------------------------------------------------------
 
 	float lineVerts[] = {
-	0.0f,50.0f,0.0f,
-	10.0f,50.0f,0.0f
+		0.0f,0.0f,0.0f,
+		1.0f,0.0f,0.0f,
+
 	};
 
 	float vertices[] = {
@@ -354,18 +422,26 @@ int main()
 	glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
 
-	VBO lineVBO(lineVerts,sizeof(lineVerts));
-	VAO lineVAO;
-	unsigned int VBO, VAO;
+	//TODO: use classes for these
+	unsigned int VBO, VAO,lineVAO,lineVBO;
 	glGenVertexArrays(1, &VAO); // we can also generate multiple VAOs or buffers at the same time
 	glGenBuffers(1, &VBO);
 
+	glGenVertexArrays(1, &lineVAO); // we can also generate multiple VAOs or buffers at the same time
+	glGenBuffers(1, &lineVBO);
 
-	// line setup
+
+
+
+	// first line setup
 	// --------------------
-	lineVAO.Bind();
-	lineVAO.LinkAttrib(lineVBO,0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
+	glBindVertexArray(lineVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(lineVerts), lineVerts, GL_STATIC_DRAW);
 
+	// position attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
 
 	// first triangle setup
 	// --------------------
@@ -411,7 +487,10 @@ int main()
 		float frameRate = 1 / elapsedTime;
 		lastTime = timeValue;
 
-		camera.moveCamera(window,elapsedTime);
+		if (camera.moveCamera(window, elapsedTime)) {
+			//player could be looking at new block after camera movement
+			updateBlockPlayerLookingAt();
+		}
 
 		// bind textures on corresponding texture units
 		glActiveTexture(GL_TEXTURE0);
@@ -419,7 +498,6 @@ int main()
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, stoneTexture);
 
-		shaderTexture.use();
 
 
 		//update coordiante transformations
@@ -428,6 +506,12 @@ int main()
 
 		view = camera.view();
 
+		diffuseShader.use();
+		diffuseShader.setMat4("model", model);
+		diffuseShader.setMat4("view", view);
+		diffuseShader.setMat4("projection", projection);
+
+		shaderTexture.use();
 		shaderTexture.setMat4("model", model);
 		shaderTexture.setMat4("view", view);
 		shaderTexture.setMat4("projection", projection);
@@ -435,25 +519,37 @@ int main()
 
 		glBindVertexArray(VAO);
 
+		//TODO: implement proper instancing
 		for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
-			
+
 			for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 				for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
 					auto blockType = chunk.blocks[x][z][y].type;
-					if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)){
+					if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)) {
 						continue;
 					}
 					model = glm::mat4(1.0f);
 					//offset by half voxel for center
-					model = glm::translate(model, glm::vec3(float(x+0.5f),float(y+0.5f),float(z+0.5f)));
+					model = glm::translate(model, glm::vec3(float(x + 0.5f), float(y + 0.5f), float(z + 0.5f)));
+
+					//BlockPosition* p = &player.blockLookingAt;
+					//if (player.isLookingAtBlock && (p->x == x) && (p->y == y) && (p->z == z)) {
+					//	diffuseShader.use();
+					//	diffuseShader.setMat4("model", model);
+					//	glDrawArrays(GL_TRIANGLES, 0, 36);
+					//	shaderTexture.use();
+					//	continue;
+					//}
+
 					shaderTexture.setMat4("model", model);
 
 					if (blockType == BlockType::Dirt) {
 						shaderTexture.setInt("texture", 0);
-					} else if (blockType == BlockType::Stone) {
+					}
+					else if (blockType == BlockType::Stone) {
 						shaderTexture.setInt("texture", 1);
-					} 
+					}
 
 					glDrawArrays(GL_TRIANGLES, 0, 36);
 				}
@@ -463,21 +559,34 @@ int main()
 		diffuseShader.setMat4("view", view);
 		diffuseShader.setMat4("projection", projection);
 
-		for (auto const& cube : cubes) {
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, glm::vec3(cube));
-			diffuseShader.setMat4("model", model);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+
+
+
+
+		glBindVertexArray(lineVAO);
+
+		//should all lines be rendered like this? idk TODO
+		glm::mat4 MVP = projection * view * model;
+		lineShader.use();
+		lineShader.setMat4("MVP", MVP);
+
+
+
+
+
+		for (auto const &line:cameraLines) {
+			lineShader.setVec3("color", line.lineColor);
+			MVP = projection * view * line.modelMatrix;
+			lineShader.setMat4("MVP", MVP);
+			glDrawArrays(GL_LINES, 0, 2);
 		}
 
 
-
-
-		model = glm::mat4(1.0f);
-		glm::mat4 MVP = projection*view*model;
-		for (int i = 0; i < cameraLines.size(); i++) {
-			cameraLines[i]->setMVP(MVP);
-			cameraLines[i]->draw();
+		for (auto const &line:blockLines) {
+			lineShader.setVec3("color", line.lineColor);
+			MVP = projection * view * line.modelMatrix;
+			lineShader.setMat4("MVP", MVP);
+			glDrawArrays(GL_LINES, 0, 2);
 		}
 
 
@@ -492,6 +601,9 @@ int main()
 	// ------------------------------------------------------------------------
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
+
+	glDeleteVertexArrays(1, &lineVAO);
+	glDeleteBuffers(1, &lineVBO);
 	//glDeleteBuffers(1, &EBO);
 
 	// glfw: terminate, clearing all previously allocated GLFW resources.
