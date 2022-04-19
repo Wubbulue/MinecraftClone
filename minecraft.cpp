@@ -12,9 +12,9 @@ void Chunk::populateBlocks() {
 		{
 			const double noise = perlin.octave2D_01((x*.01), (z*.01), 8);
 			uchar pixColor = uchar(noise * CHUNK_LENGTH);
-			blocks[x][z][pixColor].type = BlockType::Dirt;
+			blocks[index(x,z,pixColor)].type = BlockType::Dirt;
 			for (int y = pixColor - 1; y > -1; y--) {
-				blocks[x][z][y].type = BlockType::Stone;
+				blocks[index(x,z,y)].type = BlockType::Stone;
 			}
 			
 		}
@@ -38,7 +38,7 @@ void Chunk::empty() {
 	for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 		for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 			for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-				blocks[x][z][y] = block;
+				blocks[index(x,z,y)] = block;
 			}
 		}
 	}
@@ -49,26 +49,26 @@ bool Chunk::isBlockAdjacentToAir(int x, int y, int z) {
 	//must make sure we don't check outside chunk bounds
 
 	//check x adjacency
-	if ((x > 0)&&(blocks[x - 1][z][y].type == BlockType::Air)) {
+	if ((x > 0)&&(blocks[index(x-1,z,y)].type == BlockType::Air)) {
 		return true;
 	}
-	if ((x < (CHUNK_LENGTH-1))&&(blocks[x + 1][z][y].type == BlockType::Air)) {
+	if ((x < (CHUNK_LENGTH-1))&&(blocks[index(x+1,z,y)].type == BlockType::Air)) {
 		return true;
 	}
 
 	//check z adjacency
-	if ((z > 0)&&(blocks[x][z-1][y].type == BlockType::Air)) {
+	if ((z > 0)&&(blocks[index(x,z-1,y)].type == BlockType::Air)) {
 		return true;
 	}
-	if ((z < (CHUNK_LENGTH-1))&&(blocks[x][z+1][y].type == BlockType::Air)) {
+	if ((z < (CHUNK_LENGTH-1))&&(blocks[index(x,z+1,y)].type == BlockType::Air)) {
 		return true;
 	}
 
 	//check y adjacency
-	if ((y > 0)&&(blocks[x][z][y-1].type == BlockType::Air)) {
+	if ((y > 0)&&(blocks[index(x,z,y-1)].type == BlockType::Air)) {
 		return true;
 	}
-	if ((y < (CHUNK_HEIGHT-1))&&(blocks[x][z][y+1].type == BlockType::Air)) {
+	if ((y < (CHUNK_HEIGHT-1))&&(blocks[index(x,z,y+1)].type == BlockType::Air)) {
 		return true;
 	}
 
@@ -83,13 +83,13 @@ void Chunk::eliminateRayIntersection(glm::vec3 rayOrigin, glm::vec3 rayVector) {
 	for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 		for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 			for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-				if (blocks[x][z][y].type != BlockType::Air) {
+				if (blocks[index(x,z,y)].type != BlockType::Air) {
 					Triangle blockTriangles[12];
 					getBlockTriangles(x, y, z, blockTriangles);
 					for (int i = 0; i < 12; i++) {
 						glm::vec3 outPoint;
 						if (rayIntersect(rayOrigin, rayVector, blockTriangles + i, outPoint)) {
-							blocks[x][z][y].type = BlockType::Air;
+							blocks[index(x,z,y)].type = BlockType::Air;
 							break;
 						}
 					}
@@ -252,8 +252,8 @@ void Chunk::mineHoleCast(const Ray& ray) {
 	}
 
 	while (curPos.x != endPos.x  || curPos.z != endPos.z || curPos.y != endPos.y) {
-		if (blocks[curPos.x][curPos.z][curPos.y].type != BlockType::Air) {
-			blocks[curPos.x][curPos.z][curPos.y].type = BlockType::Air;
+		if (blocks[index(curPos.x,curPos.z,curPos.y)].type != BlockType::Air) {
+			blocks[index(curPos.x,curPos.z,curPos.y)].type = BlockType::Air;
 			//return;
 		}
 		if (tMaxX < tMaxY && tMaxX < tMaxZ) {
@@ -355,7 +355,7 @@ bool Chunk::findFirstSolid(const Ray& ray, BlockPosition& pos) {
 	}
 
 	while (curPos.x != endPos.x  || curPos.z != endPos.z || curPos.y != endPos.y) {
-		if (blocks[curPos.x][curPos.z][curPos.y].type != BlockType::Air) {
+		if (blocks[index(curPos.x,curPos.z,curPos.y)].type != BlockType::Air) {
 			pos = curPos;
 			return true;
 			//return;

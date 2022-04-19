@@ -147,6 +147,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		std::cout << "Took " << int_ms.count() << " microseconds to elimnate blocks" << std::endl;
 
 
+
 	}
 }
 
@@ -529,7 +530,7 @@ int main()
 			for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 				for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
-					auto blockType = chunk.blocks[x][z][y].type;
+					auto blockType = chunk.blocks[index(x,z,y)].type;
 					if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)) {
 						continue;
 					}

@@ -12,7 +12,7 @@
 const int CHUNK_HEIGHT = 64;
 const int CHUNK_LENGTH = 64;
 
-#define index(x,z,y) x*z*y
+#define index(x,z,y) (x)+((z)*CHUNK_LENGTH)+((y)*CHUNK_LENGTH*CHUNK_HEIGHT)
 
 
 const float cubeVertices[] = {
@@ -96,13 +96,19 @@ public:
 
 	siv::PerlinNoise::seed_type seed;
 	//x,z,y
-	Block blocks[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_HEIGHT];
-	//Block* blocks = new Block[CHUNK_LENGTH*CHUNK_LENGTH*CHUNK_HEIGHT];
+	//Block blocks[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_HEIGHT];
+	Block* blocks = new Block[CHUNK_LENGTH*CHUNK_LENGTH*CHUNK_HEIGHT];
 
 	
 	Chunk(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
 		populateBlocks();
 	}
+
+	~Chunk()
+	{
+		delete[] blocks;
+	}
+
 	void populateBlocks();
 
 	//randomizes seed and regenerates
