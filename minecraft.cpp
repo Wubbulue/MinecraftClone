@@ -388,3 +388,20 @@ Box3 Chunk::getBox() {
 }
 
 
+long World::cantorHash(int a, int b)
+{
+	long A = (unsigned long)(a >= 0 ? 2 * (long)a : -2 * (long)a - 1);
+	long B = (unsigned long)(b >= 0 ? 2 * (long)b : -2 * (long)b - 1);
+	long C = (long)((A >= B ? A * A + A + B : A + B * B) / 2);
+	return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
+}
+
+void World::addChunk(int x, int z, Chunk chunk) {
+
+	//this is probably copying all of our blocks, probably inneficient TODO
+	chunks.insert(std::pair<long,Chunk>(cantorHash(x,z),chunk));
+
+}
+
+
+

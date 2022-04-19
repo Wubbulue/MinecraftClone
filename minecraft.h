@@ -6,9 +6,13 @@
 #include "geometery.h"
 #include <cassert>
 #include <limits>
+#include <unordered_map>
+#include <array>
 
 const int CHUNK_HEIGHT = 64;
 const int CHUNK_LENGTH = 64;
+
+#define index(x,z,y) x*z*y
 
 
 const float cubeVertices[] = {
@@ -93,6 +97,9 @@ public:
 	siv::PerlinNoise::seed_type seed;
 	//x,z,y
 	Block blocks[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_HEIGHT];
+	//Block* blocks = new Block[CHUNK_LENGTH*CHUNK_LENGTH*CHUNK_HEIGHT];
+
+	
 	Chunk(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
 		populateBlocks();
 	}
@@ -123,6 +130,22 @@ public:
 
 	Box3 getBox();
 
+
+};
+
+class World {
+public:
+	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
+	uint16_t renderDistance = 4;
+	void addChunk(int x, int z, Chunk chunk);
+
+	//this function hashes our two integers into a unique output
+	static long cantorHash(int a, int b);
+	
+
+
+private:
+	std::unordered_map<long, Chunk> chunks;
 
 };
 
