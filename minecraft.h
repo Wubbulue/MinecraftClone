@@ -4,7 +4,7 @@
 #include "PerlinNoise.h"
 #include "glm/glm.hpp"
 #include "geometery.h"
-#include <cassert>
+#include "Logging.h"
 #include <limits>
 #include <unordered_map>
 #include <array>
@@ -73,7 +73,7 @@ struct Block {
 };
 
 struct BlockPosition {
-	uint16_t x, y, z;
+	int x, y, z;
 
 	friend bool operator== (const BlockPosition& b1, const BlockPosition& b2)
 	{
@@ -90,29 +90,26 @@ class Chunk {
 public:
 
 	//these variables define chunk's position within the world
-	int x = 0, z=0;
+	int x, z;
 
 
 
-	siv::PerlinNoise::seed_type seed;
 	//x,z,y
 	//Block blocks[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_HEIGHT];
 	Block* blocks = new Block[CHUNK_LENGTH*CHUNK_LENGTH*CHUNK_HEIGHT];
 
+	//this function returns a block given a block position this is global
+	Block* indexAbsolute(BlockPosition pos);
 	
-	Chunk(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
-		populateBlocks();
+	Chunk(int inX,int inZ) : x(inX), z(inZ) {
 	}
 
-	~Chunk()
-	{
-		delete[] blocks;
-	}
+	//will be deleted when world is????
+	//~Chunk()
+	//{
+	//	delete[] blocks;
+	//}
 
-	void populateBlocks();
-
-	//randomizes seed and regenerates
-	void regenerate();
 
 	//empties chunk
 	void empty();
@@ -128,11 +125,6 @@ public:
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
 	BlockPosition findBlock(glm::vec3 position);
 
-	//mines hole along ray
-	void mineHoleCast(const Ray& ray);
-
-	//traverses until a solid block is found. If none, returns false
-	bool findFirstSolid(const Ray& ray, BlockPosition& pos);
 
 	Box3 getBox();
 
@@ -141,17 +133,49 @@ public:
 
 class World {
 public:
+
+	siv::PerlinNoise::seed_type seed;
+
+	//randomizes seed and regenerates
+	void populateChunks();
+	void populateChunk(Chunk &chunk);
+	void regenerate();
+	siv::PerlinNoise perlin;
+
+	World(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
+		perlin = siv::PerlinNoise(seed);
+		
+	}
+
+	//will only currently work for rays cast inside world bounds 
+	void mineHoleCast(const Ray& ray, const float& length);
+
+	//traverses until a solid block is found. If none, returns false, still unsure if this traverses the full distance
+	bool findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos);
+
+	//block are inclusive at start, and non inclusive at end, except for at chunk border
+	static BlockPosition findBlock(glm::vec3 position);
+
+	Chunk* getChunkContainingBlock(const int& x,const int& z);
+
+	~World() {
+		for (auto& [key, chunk] : chunks)
+		{
+			delete[] chunk.blocks;
+		}
+	}
+
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
 	uint16_t renderDistance = 4;
-	void addChunk(int x, int z, Chunk chunk);
+	void addChunk(int x, int z);
 
 	//this function hashes our two integers into a unique output
 	static long cantorHash(int a, int b);
+	std::unordered_map<long, Chunk> chunks;
 	
 
 
 private:
-	std::unordered_map<long, Chunk> chunks;
 
 };
 

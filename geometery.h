@@ -17,14 +17,18 @@ bool rayIntersect(glm::vec3 rayOrigin, glm::vec3 rayVector, Triangle* inTriangle
 class Ray
 {
 public:
-    Ray(const glm::vec3& orig, const glm::vec3& dir) : orig(orig), dir(dir)
+    //dir will always be normalized
+    Ray(const glm::vec3& orig, glm::vec3& inDir) : orig(orig)
     {
+        dir = glm::normalize(inDir);
         invdir = glm::vec3(1.0f,1.0f,1.0f) / dir;
         sign[0] = (invdir.x < 0);
         sign[1] = (invdir.y < 0);
         sign[2] = (invdir.z < 0);
     }
     glm::vec3 orig, dir;       // ray orig and dir 
+
+    //TODO: remove these from ray
     glm::vec3 invdir;
     int sign[3];
 };

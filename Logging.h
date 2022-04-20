@@ -1,10 +1,21 @@
 #ifndef LOGGING_HEADER
 #define LOGGING_HEADER
 
+#include <stdio.h>
+
+#ifdef _DEBUG
+#define assert(cond) if(!cond) __debugbreak()
+#else
+#define assert(cond) if(!cond) printf("Assert called in %s at line %d\n",__FILE__,__LINE__);
+#endif // DEBUG
+
+#define warn(string) printf("WARNING: %s ... from %s at line %d\n",string,__FILE__,__LINE__);
+//#define warn(string) 1+1;
+
+
 #include <chrono>
 #include <utility>
 #include <string>
-#include <stdio.h>
 
 
 namespace Logging {

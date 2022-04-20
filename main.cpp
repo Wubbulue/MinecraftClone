@@ -37,7 +37,8 @@ const float mouseSensitivity = 0.1f;
 Player player;
 Camera camera;
 
-Chunk chunk(123489u);
+//Chunk chunk(123489u,0,0);
+World world(123489u);
 bool wireframe = false;
 
 const float lineLength = 30.0f;
@@ -76,8 +77,9 @@ uint8_t bLineIndices[] = {
 };
 
 void updateBlockPlayerLookingAt() {
+
 	BlockPosition oldPos = player.blockLookingAt;
-	if (chunk.findFirstSolid(Ray(camera.position, camera.direction), player.blockLookingAt)) {
+	if (world.findFirstSolid(Ray(camera.position, camera.direction), 5.0f,player.blockLookingAt)) {
 		player.isLookingAtBlock = true;
 		if (oldPos != player.blockLookingAt) {
 			//TODO: at times this is rendering too many lines, maybe check adjecent blocks for which lines to render
@@ -99,7 +101,7 @@ void updateBlockPlayerLookingAt() {
 				glm::vec3 start(fx+outlineVerts[j1],fy+outlineVerts[j1+1],fz+outlineVerts[j1+2]);
 				glm::vec3 end(fx+outlineVerts[j2],fy+outlineVerts[j2+1],fz+outlineVerts[j2+2]);
 
-				blockLines.emplace_back(Line(start, end, glm::vec3(0.2f, 0.2f, 0.2f)));
+				blockLines.emplace_back(Line(start, end, glm::vec3(0.8f, 0.2f, 0.2f)));
 
 			}
 		}
@@ -135,7 +137,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		auto t1 = std::chrono::high_resolution_clock::now();
 		Ray ray(start,camera.direction);
-		chunk.mineHoleCast(ray);
+		world.mineHoleCast(ray,30.0f);
 		auto t2 = std::chrono::high_resolution_clock::now();
 
 		// floating-point duration: no duration_cast needed
@@ -190,7 +192,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
 	if (key == GLFW_KEY_N && action == GLFW_PRESS) //regenerate chunks
 	{
-		chunk.regenerate();
+		world.regenerate();
 	}
 	else if (key == GLFW_KEY_T && action == GLFW_PRESS) //toggle wireframes
 	{
@@ -213,9 +215,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	else if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
-	else if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
-		chunk.findBlock(camera.position);
-	}
 }
 
 //relatively rotates something around a point
@@ -228,6 +227,15 @@ void rotateAboutPoint(glm::mat4 &mat,float rotationAmount, float xOffset, float 
 
 int main()
 {
+
+	world.addChunk(0, 0);
+	world.addChunk(1, 0);
+	world.addChunk(0, 1);
+	world.addChunk(1, 1);
+
+	//BlockPosition tempPos;
+	//Ray ray(glm::vec3(1.2f,50.2f,0.5f),glm::vec3(0.0f,-0.4f,0.0f));
+	//world.findFirstSolid(ray, 5.0f, tempPos);
 
 
 
@@ -469,8 +477,8 @@ int main()
 
 	
 
-	chunk.empty();
-	chunk.populateBlocks();
+	//chunk.empty();
+	//chunk.populateBlocks();
 
 	// render loop
 	// -----------
@@ -525,44 +533,53 @@ int main()
 		glBindVertexArray(VAO);
 
 		//TODO: implement proper instancing
-		for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+		for (auto& [key, chunk] : world.chunks)
+		{
 
-			for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-				for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+			float offsetX = chunk.x * CHUNK_LENGTH;
+			float offsetZ = chunk.z * CHUNK_LENGTH;
+			for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 
-					auto blockType = chunk.blocks[index(x,z,y)].type;
-					if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)) {
-						continue;
+				for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+					for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+
+						auto blockType = chunk.blocks[index(x, z, y)].type;
+						if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)) {
+							continue;
+						}
+						model = glm::mat4(1.0f);
+
+
+						//offset by half voxel for center
+						model = glm::translate(model, glm::vec3(float(x + 0.5f)+offsetX, float(y + 0.5f), float(z + 0.5f)+offsetZ));
+
+						//if (player.isLookingAtBlock) {
+						//	auto p = player.blockLookingAt;
+						//	p.x -= chunk.x * CHUNK_LENGTH;
+						//	p.z -= chunk.z * CHUNK_LENGTH;
+						//	if ((p.x == x) && (p.y == y) && (p.z == z)) {
+						//		diffuseShader.use();
+						//		diffuseShader.setMat4("model", model);
+						//		glDrawArrays(GL_TRIANGLES, 0, 36);
+						//		shaderTexture.use();
+						//		continue;
+						//	}
+						//}
+
+						shaderTexture.setMat4("model", model);
+
+						if (blockType == BlockType::Dirt) {
+							shaderTexture.setInt("texture", 0);
+						}
+						else if (blockType == BlockType::Stone) {
+							shaderTexture.setInt("texture", 1);
+						}
+
+						glDrawArrays(GL_TRIANGLES, 0, 36);
 					}
-					model = glm::mat4(1.0f);
-					//offset by half voxel for center
-					model = glm::translate(model, glm::vec3(float(x + 0.5f), float(y + 0.5f), float(z + 0.5f)));
-
-					//BlockPosition* p = &player.blockLookingAt;
-					//if (player.isLookingAtBlock && (p->x == x) && (p->y == y) && (p->z == z)) {
-					//	diffuseShader.use();
-					//	diffuseShader.setMat4("model", model);
-					//	glDrawArrays(GL_TRIANGLES, 0, 36);
-					//	shaderTexture.use();
-					//	continue;
-					//}
-
-					shaderTexture.setMat4("model", model);
-
-					if (blockType == BlockType::Dirt) {
-						shaderTexture.setInt("texture", 0);
-					}
-					else if (blockType == BlockType::Stone) {
-						shaderTexture.setInt("texture", 1);
-					}
-
-					glDrawArrays(GL_TRIANGLES, 0, 36);
 				}
 			}
 		}
-		diffuseShader.use();
-		diffuseShader.setMat4("view", view);
-		diffuseShader.setMat4("projection", projection);
 
 
 
