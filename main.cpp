@@ -14,6 +14,8 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "Camera.h"
+#include "font.h"
+
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -79,7 +81,7 @@ uint8_t bLineIndices[] = {
 void updateBlockPlayerLookingAt() {
 
 	BlockPosition oldPos = player.blockLookingAt;
-	if (world.findFirstSolid(Ray(camera.position, camera.direction), 5.0f,player.blockLookingAt)) {
+	if (world.findFirstSolid(Ray(camera.position, camera.direction), 30.0f,player.blockLookingAt)) {
 		player.isLookingAtBlock = true;
 		if (oldPos != player.blockLookingAt) {
 			//TODO: at times this is rendering too many lines, maybe check adjecent blocks for which lines to render
@@ -228,18 +230,15 @@ void rotateAboutPoint(glm::mat4 &mat,float rotationAmount, float xOffset, float 
 int main()
 {
 
+
+
 	world.addChunk(0, 0);
-	world.addChunk(1, 0);
-	world.addChunk(0, 1);
-	world.addChunk(1, 1);
-
-	//BlockPosition tempPos;
-	//Ray ray(glm::vec3(1.2f,50.2f,0.5f),glm::vec3(0.0f,-0.4f,0.0f));
-	//world.findFirstSolid(ray, 5.0f, tempPos);
+	//world.addChunk(-1, 0);
+	//world.addChunk(1, 0);
+	//world.addChunk(0, 1);
+	//world.addChunk(1, 1);
 
 
-
-	//camera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
 	camera.position.y = 50.0f;
 
 
@@ -477,6 +476,8 @@ int main()
 
 	
 
+	TextWriter fontWriter;
+
 	//chunk.empty();
 	//chunk.populateBlocks();
 
@@ -494,11 +495,13 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+
 		//calc frame rate
 		float timeValue = glfwGetTime();
 		float elapsedTime = timeValue - lastTime;
 		float frameRate = 1 / elapsedTime;
 		lastTime = timeValue;
+		fontWriter.RenderText(std::to_string(frameRate), 25.0f, SCR_HEIGHT - 100, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
 
 		if (camera.moveCamera(window, elapsedTime)) {
 			//player could be looking at new block after camera movement
@@ -553,18 +556,18 @@ int main()
 						//offset by half voxel for center
 						model = glm::translate(model, glm::vec3(float(x + 0.5f)+offsetX, float(y + 0.5f), float(z + 0.5f)+offsetZ));
 
-						//if (player.isLookingAtBlock) {
-						//	auto p = player.blockLookingAt;
-						//	p.x -= chunk.x * CHUNK_LENGTH;
-						//	p.z -= chunk.z * CHUNK_LENGTH;
-						//	if ((p.x == x) && (p.y == y) && (p.z == z)) {
-						//		diffuseShader.use();
-						//		diffuseShader.setMat4("model", model);
-						//		glDrawArrays(GL_TRIANGLES, 0, 36);
-						//		shaderTexture.use();
-						//		continue;
-						//	}
-						//}
+						if (player.isLookingAtBlock) {
+							auto p = player.blockLookingAt;
+							p.x -= chunk.x * CHUNK_LENGTH;
+							p.z -= chunk.z * CHUNK_LENGTH;
+							if ((p.x == x) && (p.y == y) && (p.z == z)) {
+								diffuseShader.use();
+								diffuseShader.setMat4("model", model);
+								glDrawArrays(GL_TRIANGLES, 0, 36);
+								shaderTexture.use();
+								continue;
+							}
+						}
 
 						shaderTexture.setMat4("model", model);
 
