@@ -214,7 +214,11 @@ void World::populateChunk(Chunk& chunk) {
 		for (int x = 0; x < CHUNK_LENGTH; ++x)
 		{
 			const double noise = perlin.octave2D_01(((x + offsetX) * .01), ((z + offsetZ) * .01), 8);
-			uint8_t pixColor = uint8_t(noise * CHUNK_LENGTH);
+			uint8_t pixColor = uint8_t(noise * CHUNK_HEIGHT);
+
+			//scuffed solution to not render blocks at height of 1
+			//TODO: make this better
+			if (pixColor == CHUNK_HEIGHT) pixColor--;
 
 			if (z == 0 || z == CHUNK_LENGTH - 1 || x == 0 || x == CHUNK_LENGTH - 1) {
 				chunk.blocks[index(x, z, pixColor)].type = BlockType::Stone;
@@ -367,9 +371,9 @@ BlockPosition World::findBlock(glm::vec3 position) {
 	//	printf("Not in range\n");
 	//}
 
-	uint16_t intx = std::floor(position.x);
-	uint16_t inty = std::floor(position.y);
-	uint16_t intz = std::floor(position.z);
+	int intx = std::floor(position.x);
+	int inty = std::floor(position.y);
+	int intz = std::floor(position.z);
 
 
 	BlockPosition block_position = {
@@ -541,4 +545,29 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 	}
 	return false;
 
+}
+
+uint32_t World::numBlocks() {
+
+	uint32_t numBlocks = 0;
+
+	for (const auto& [key, chunk] : chunks)
+	{
+		for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+
+			for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+				for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+
+					auto blockType = chunk.blocks[index(x, z, y)].type;
+					if (blockType == BlockType::Air) {
+						continue;
+					}
+					numBlocks++;
+
+				}
+			}
+		}
+
+	}
+	return numBlocks;
 }

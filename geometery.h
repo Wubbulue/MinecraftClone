@@ -1,7 +1,7 @@
 #ifndef GEOMETERY_HEADER
 #define GEOMETERY_HEADER
 
-#include "glm/glm.hpp"
+#include "Camera.h"
 #include <algorithm>
 
 
@@ -9,7 +9,71 @@ struct Triangle {
 	glm::vec3 points[3];
 };
 
-//typedef glm::vec3 Triangle[3];
+struct Plane {
+    // unit vector
+    glm::vec3 normal = { 0.f, 1.f, 0.f };
+
+    // distance from origin to the nearest point in the plan
+    float distance = 0.f;
+
+    Plane() = default;
+
+    Plane(const glm::vec3 & p1, const glm::vec3 & norm)
+        : normal(glm::normalize(norm)),
+        distance(glm::dot(normal, p1))
+    {}
+
+    float getSignedDistanceToPlane(const glm::vec3 & point) const
+    {
+        return glm::dot(normal, point) - distance;
+    }
+};
+
+struct Frustum
+{
+    Plane topFace;
+    Plane bottomFace;
+
+    Plane rightFace;
+    Plane leftFace;
+
+    Plane farFace;
+    Plane nearFace;
+};
+
+Frustum createFrustumFromCamera(const Camera& cam, float aspect);
+
+struct Sphere 
+{
+    glm::vec3 center{ 0.f, 0.f, 0.f };
+    float radius{ 0.f };
+
+    Sphere(const glm::vec3& inCenter, float inRadius)
+        : center{ inCenter }, radius{ inRadius }
+    {}
+
+    bool isOnOrForwardPlane(const Plane& plane) const;
+
+    bool isOnFrustum(const Frustum& camFrustum) const;
+};
+
+//this code was stolen from https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling i don't understand it fully UNDERSTAND
+struct SquareAABB 
+{
+    glm::vec3 center{ 0.f, 0.f, 0.f };
+    float extent{ 0.f };
+
+    SquareAABB(const glm::vec3& inCenter, float inExtent)
+        : center{ inCenter }, extent{ inExtent }
+    {}
+
+    bool isOnOrForwardPlane(const Plane& plane) const;
+
+    bool isOnFrustum(const Frustum& camFrustum) const;
+
+};
+
+
 
 //Möller–Trumbore intersection algorithm from wikipedia to calculate intersection of ray and triangle
 bool rayIntersect(glm::vec3 rayOrigin, glm::vec3 rayVector, Triangle* inTriangle, glm::vec3& outIntersectionPoint);

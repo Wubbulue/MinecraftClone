@@ -153,6 +153,8 @@ public:
 	//traverses until a solid block is found. If none, returns false, still unsure if this traverses the full distance
 	bool findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos);
 
+	uint32_t numBlocks();
+
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
 	static BlockPosition findBlock(glm::vec3 position);
 

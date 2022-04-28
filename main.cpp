@@ -1,3 +1,5 @@
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include "Player.h"
 #include <chrono>
 #include <memory>
@@ -6,8 +8,6 @@
 #include "VAO.h"
 #include "minecraft.h"
 #include "PerlinNoise.h"
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include "shader.h"
 #include <iostream>
 #include "glm/glm.hpp"
@@ -15,6 +15,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "Camera.h"
 #include "font.h"
+#include "Colors.h"
 
 
 
@@ -35,6 +36,10 @@ float fov = 45.0f;
 float camHeight = 0.0f;
 const float mouseSensitivity = 0.1f;
 
+bool renderDebugInfo = true;
+bool shouldFrustumCull = true;
+bool frustumCullUsingCube = true;
+
 
 Player player;
 Camera camera;
@@ -46,6 +51,8 @@ bool wireframe = false;
 const float lineLength = 30.0f;
 std::vector<Line> cameraLines;
 std::vector<Line> blockLines;
+
+float cubeRadius;
 
 
 
@@ -77,6 +84,17 @@ uint8_t bLineIndices[] = {
 	5,7,
 	6,7,
 };
+
+void drawCamFrustum() {
+	Frustum camFrustum = createFrustumFromCamera(camera, float(SCR_WIDTH) / float(SCR_HEIGHT));
+	cameraLines.emplace_back(Line(camera.position, camera.position+camFrustum.rightFace.normal, COLORS::red));
+	cameraLines.emplace_back(Line(camera.position,camera.position+camFrustum.leftFace.normal,COLORS::blue));
+	cameraLines.emplace_back(Line(camera.position, camera.position+camFrustum.topFace.normal, COLORS::purple));
+	cameraLines.emplace_back(Line(camera.position,camera.position+camFrustum.bottomFace.normal,COLORS::yellow));
+	cameraLines.emplace_back(Line(camera.position, camera.position+camFrustum.nearFace.normal, COLORS::cyan));
+	cameraLines.emplace_back(Line(camera.position,camera.position+camFrustum.farFace.normal,COLORS::white));
+
+}
 
 void updateBlockPlayerLookingAt() {
 
@@ -214,7 +232,22 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		cameraLines.clear();
 	}
-	else if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+	else if (key == GLFW_KEY_F3 && action == GLFW_PRESS) //Render debug info
+	{
+		renderDebugInfo = !renderDebugInfo;
+	}
+	else if (key == GLFW_KEY_F && action == GLFW_PRESS) //Frustum cull
+	{
+		shouldFrustumCull = !shouldFrustumCull;
+		if (shouldFrustumCull) {
+			printf("Frustum culling enabled\n");
+		}
+		else {
+			printf("Frustum culling disabled\n");
+		}
+		//drawCamFrustum();
+	}
+	else if (key==GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
 }
@@ -230,13 +263,13 @@ void rotateAboutPoint(glm::mat4 &mat,float rotationAmount, float xOffset, float 
 int main()
 {
 
+	cubeRadius = 1.0f / cos(glm::radians(45.0f));
 
 
 	world.addChunk(0, 0);
-	//world.addChunk(-1, 0);
-	//world.addChunk(1, 0);
-	//world.addChunk(0, 1);
-	//world.addChunk(1, 1);
+	world.addChunk(-1, 0);
+	world.addChunk(0, -1);
+	world.addChunk(-1, -1);
 
 
 	camera.position.y = 50.0f;
@@ -481,6 +514,7 @@ int main()
 	//chunk.empty();
 	//chunk.populateBlocks();
 
+
 	// render loop
 	// -----------
 	float lastTime=glfwGetTime();
@@ -501,7 +535,8 @@ int main()
 		float elapsedTime = timeValue - lastTime;
 		float frameRate = 1 / elapsedTime;
 		lastTime = timeValue;
-		fontWriter.RenderText(std::to_string(frameRate), 25.0f, SCR_HEIGHT - 100, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+
+
 
 		if (camera.moveCamera(window, elapsedTime)) {
 			//player could be looking at new block after camera movement
@@ -518,7 +553,7 @@ int main()
 
 		//update coordiante transformations
 		projection = glm::mat4(1.0f);
-		projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, camera.near, camera.far);
 
 		view = camera.view();
 
@@ -535,6 +570,9 @@ int main()
 
 		glBindVertexArray(VAO);
 
+
+		int blocksCulled = 0;
+		Frustum camFrustum = createFrustumFromCamera(camera, float(SCR_WIDTH) / float(SCR_HEIGHT));
 		//TODO: implement proper instancing
 		for (auto& [key, chunk] : world.chunks)
 		{
@@ -546,10 +584,28 @@ int main()
 				for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 					for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
+
+
 						auto blockType = chunk.blocks[index(x, z, y)].type;
 						if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)) {
 							continue;
 						}
+
+						if (shouldFrustumCull) {
+
+							auto block = chunk.blocks + index(x, z, y);
+							glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
+
+							SquareAABB square(center, 0.5f);
+							bool isOnFurstum = square.isOnFrustum(camFrustum);
+
+							if (!isOnFurstum) {
+								blocksCulled++;
+								continue;
+							}
+
+						}
+
 						model = glm::mat4(1.0f);
 
 
@@ -612,6 +668,15 @@ int main()
 			MVP = projection * view * line.modelMatrix;
 			lineShader.setMat4("MVP", MVP);
 			glDrawArrays(GL_LINES, 0, 2);
+		}
+
+
+		if (renderDebugInfo) {
+			fontWriter.RenderText(std::to_string(frameRate), 25.0f, SCR_HEIGHT - 100, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+			std::string posString = std::to_string(camera.position.x) + ", " + std::to_string(camera.position.y) + ", " + std::to_string(camera.position.z);
+			fontWriter.RenderText(posString, 25.0f, SCR_HEIGHT - 150, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+			std::string culledString = "Blocks culled: "+std::to_string(blocksCulled);
+			fontWriter.RenderText(culledString, 25.0f, SCR_HEIGHT - 200, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
 		}
 
 

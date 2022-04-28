@@ -122,12 +122,64 @@ bool Box3::intersectParametric(const Ray& r, float& intersect1, float& intersect
 
 bool Box3::checkIfInside(glm::vec3 v) {
 
-	bool xBound = (v.x >= bounds[0].x)&&(v.x<bounds[1].x);
+	bool xBound = (v.x >= bounds[0].x) && (v.x < bounds[1].x);
 
-	bool yBound = (v.y >= bounds[0].y)&&(v.y<bounds[1].y);
+	bool yBound = (v.y >= bounds[0].y) && (v.y < bounds[1].y);
 
-	bool zBound = (v.z >= bounds[0].y)&&(v.z<bounds[1].z);
+	bool zBound = (v.z >= bounds[0].y) && (v.z < bounds[1].z);
 
 	return xBound && yBound && zBound;
 
+}
+
+Frustum createFrustumFromCamera(const Camera& cam, float aspect)
+{
+	Frustum     frustum;
+	const float halfVSide = cam.far * tanf(glm::radians(cam.Zoom * .5f));
+	const float halfHSide = halfVSide * aspect;
+	const glm::vec3 frontMultFar = cam.far * cam.direction;
+
+	frustum.nearFace = { cam.position + cam.near * cam.direction, cam.direction };
+	frustum.farFace = { cam.position + frontMultFar, -cam.direction };
+	frustum.rightFace = { cam.position, glm::cross(cam.up, frontMultFar + cam.right * halfHSide) };
+	frustum.leftFace = { cam.position, glm::cross(frontMultFar - cam.right * halfHSide, cam.up) };
+	frustum.topFace = { cam.position, glm::cross(cam.right, frontMultFar - cam.up * halfVSide) };
+	frustum.bottomFace = { cam.position, glm::cross(frontMultFar + cam.up * halfVSide, cam.right) };
+
+	return frustum;
+}
+
+bool Sphere::isOnOrForwardPlane(const Plane& plane) const
+{
+	return plane.getSignedDistanceToPlane(center) > -radius;
+}
+
+bool Sphere::isOnFrustum(const Frustum& camFrustum) const
+{
+
+	//Check Firstly the result that have the most chance to faillure to avoid to call all functions.
+	return (isOnOrForwardPlane(camFrustum.leftFace) &&
+		isOnOrForwardPlane(camFrustum.rightFace) &&
+		isOnOrForwardPlane(camFrustum.farFace) &&
+		isOnOrForwardPlane(camFrustum.nearFace) &&
+		isOnOrForwardPlane(camFrustum.topFace) &&
+		isOnOrForwardPlane(camFrustum.bottomFace));
+}
+
+bool SquareAABB::isOnOrForwardPlane(const Plane& plane) const
+{
+	// Compute the projection interval radius of b onto L(t) = b.c + t * p.n
+	const float r = extent * (std::abs(plane.normal.x) + std::abs(plane.normal.y) + std::abs(plane.normal.z));
+	return -r <= plane.getSignedDistanceToPlane(center);
+}
+
+bool SquareAABB::isOnFrustum(const Frustum& camFrustum) const
+{
+
+	return (isOnOrForwardPlane(camFrustum.leftFace) &&
+		isOnOrForwardPlane(camFrustum.rightFace) &&
+		isOnOrForwardPlane(camFrustum.topFace) &&
+		isOnOrForwardPlane(camFrustum.bottomFace) &&
+		isOnOrForwardPlane(camFrustum.nearFace) &&
+		isOnOrForwardPlane(camFrustum.farFace));
 }
