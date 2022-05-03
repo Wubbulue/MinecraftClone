@@ -19,26 +19,26 @@ bool Chunk::isBlockAdjacentToAir(int x, int y, int z) {
 	//must make sure we don't check outside chunk bounds
 
 	//check x adjacency
-	if ((x > 0)&&(blocks[index(x-1,z,y)].type == BlockType::Air)) {
+	if ((x > 0)&&(blocks[index(x-1,z,y)].type == BlockTypes::Air)) {
 		return true;
 	}
-	if ((x < (CHUNK_LENGTH-1))&&(blocks[index(x+1,z,y)].type == BlockType::Air)) {
+	if ((x < (CHUNK_LENGTH-1))&&(blocks[index(x+1,z,y)].type == BlockTypes::Air)) {
 		return true;
 	}
 
 	//check z adjacency
-	if ((z > 0)&&(blocks[index(x,z-1,y)].type == BlockType::Air)) {
+	if ((z > 0)&&(blocks[index(x,z-1,y)].type == BlockTypes::Air)) {
 		return true;
 	}
-	if ((z < (CHUNK_LENGTH-1))&&(blocks[index(x,z+1,y)].type == BlockType::Air)) {
+	if ((z < (CHUNK_LENGTH-1))&&(blocks[index(x,z+1,y)].type == BlockTypes::Air)) {
 		return true;
 	}
 
 	//check y adjacency
-	if ((y > 0)&&(blocks[index(x,z,y-1)].type == BlockType::Air)) {
+	if ((y > 0)&&(blocks[index(x,z,y-1)].type == BlockTypes::Air)) {
 		return true;
 	}
-	if ((y < (CHUNK_HEIGHT-1))&&(blocks[index(x,z,y+1)].type == BlockType::Air)) {
+	if ((y < (CHUNK_HEIGHT-1))&&(blocks[index(x,z,y+1)].type == BlockTypes::Air)) {
 		return true;
 	}
 
@@ -53,13 +53,13 @@ void Chunk::eliminateRayIntersection(glm::vec3 rayOrigin, glm::vec3 rayVector) {
 	for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 		for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 			for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-				if (blocks[index(x,z,y)].type != BlockType::Air) {
+				if (blocks[index(x,z,y)].type != BlockTypes::Air) {
 					Triangle blockTriangles[12];
 					getBlockTriangles(x, y, z, blockTriangles);
 					for (int i = 0; i < 12; i++) {
 						glm::vec3 outPoint;
 						if (rayIntersect(rayOrigin, rayVector, blockTriangles + i, outPoint)) {
-							blocks[index(x,z,y)].type = BlockType::Air;
+							blocks[index(x,z,y)].type = BlockTypes::Air;
 							break;
 						}
 					}
@@ -123,18 +123,18 @@ BlockPosition Chunk::findBlock(glm::vec3 position) {
 const char* blockTypeToString(BlockType type) {
 	switch (type) {
 
-	case BlockType::Dirt:
+	case BlockTypes::Dirt:
 	{
 		return "Dirt";
 	}
 
-	case BlockType::Air:
+	case BlockTypes::Air:
 	{
 
 		return "Air";
 	}
 
-	case BlockType::Stone:
+	case BlockTypes::Stone:
 	{
 		return "Stone";
 	}
@@ -172,13 +172,19 @@ long World::cantorHash(int a, int b)
 
 void World::addChunk(int x, int z) {
 
+
+	auto hash = cantorHash(x, z);
+	if (chunks.find(hash) != chunks.end()) {
+		std::cout << "Chunk already exists, nothing added" << std::endl;
+		return;
+	}
+
 	//this is probably copying all of our blocks, probably inneficient TODO
 	//chunks.insert(std::pair<long,Chunk>(cantorHash(x,z),chunk));
 	Chunk chunk(x,z);
 
 	populateChunk(chunk);
 
-	auto hash = cantorHash(x, z);
 	chunks.insert(std::pair<long,Chunk>(hash,chunk));
 
 }
@@ -221,14 +227,14 @@ void World::populateChunk(Chunk& chunk) {
 			if (pixColor == CHUNK_HEIGHT) pixColor--;
 
 			if (z == 0 || z == CHUNK_LENGTH - 1 || x == 0 || x == CHUNK_LENGTH - 1) {
-				chunk.blocks[index(x, z, pixColor)].type = BlockType::Stone;
+				chunk.blocks[index(x, z, pixColor)].type = BlockTypes::Stone;
 			}
 			else {
-				chunk.blocks[index(x, z, pixColor)].type = BlockType::Dirt;
+				chunk.blocks[index(x, z, pixColor)].type = BlockTypes::Dirt;
 			}
 
 			for (int y = pixColor - 1; y > -1; y--) {
-				chunk.blocks[index(x, z, y)].type = BlockType::Stone;
+				chunk.blocks[index(x, z, y)].type = BlockTypes::Stone;
 			}
 
 		}
@@ -321,8 +327,8 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 		}
 
 		auto block = chunk->indexAbsolute(curPos);
-		if (block->type != BlockType::Air) {
-			block->type = BlockType::Air;
+		if (block->type != BlockTypes::Air) {
+			block->type = BlockTypes::Air;
 		}
 		if (tMaxX < tMaxY && tMaxX < tMaxZ) {
 			// X-axis traversal.
@@ -398,18 +404,21 @@ Chunk* World::getChunkContainingBlock(const int& x,const int& z) {
 		chunkZ -= 1;
 	}
 
-	auto hash = cantorHash(chunkX, chunkZ);
+	return getChunk(chunkX, chunkZ);
+
+
+}
+
+Chunk* World::getChunk(const int& x, const int& z)
+{
+	auto hash = cantorHash(x, z);
 	auto elementFound = chunks.find(hash);
 	if (elementFound != chunks.end()) {
 		return &(elementFound->second);
 	}
 	else {
-		//chunks isn't generated!!!
-		warn("Chunk loading is behind");
 		return nullptr;
 	}
-
-
 }
 
 bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos) {
@@ -429,7 +438,7 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 	//if (chunkTemp) {
 	//	auto blockTemp = chunkTemp->indexAbsolute(endPos);
 	//	type = blockTemp->type;
-	//	blockTemp->type = BlockType::Stone;
+	//	blockTemp->type = BlockTypes::Stone;
 	//}
 
 
@@ -507,7 +516,7 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 		}
 
 		auto block = chunk->indexAbsolute(curPos);
-		if (block->type != BlockType::Air) {
+		if (block->type != BlockTypes::Air) {
 			pos = curPos;
 			return true;
 		}
@@ -559,7 +568,7 @@ uint32_t World::numBlocks() {
 				for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
 					auto blockType = chunk.blocks[index(x, z, y)].type;
-					if (blockType == BlockType::Air) {
+					if (blockType == BlockTypes::Air) {
 						continue;
 					}
 					numBlocks++;

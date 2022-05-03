@@ -6,28 +6,32 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 // Default camera values
-const float YAW = -90.0f;
-const float PITCH = 0.0f;
-const float SPEED = 10.0f;
-const float SENSITIVITY = 0.1f;
-const float ZOOM = 45.0f;
+namespace CAM_DEFAULTS {
+
+	const float YAW = -90.0f;
+	const float PITCH = 0.0f;
+	const float SPEED = 10.0f;
+	const float SENSITIVITY = 0.1f;
+	const float ZOOM = 45.0f;
+	const glm::vec3 POSITION(0.0f, 50.0f, 0.0f);
+};
 
 class Camera {
 public:
 	float near = 0.1f, far = 1000.0f;
 
-	glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 position = CAM_DEFAULTS::POSITION;
 	glm::vec3 direction= glm::vec3(0.0f, 1.0f, -1.0f);
 	glm::vec3 up = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 right = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
 	// euler Angles
-	float Yaw = YAW;
-	float Pitch = PITCH;
+	float Yaw = CAM_DEFAULTS::YAW;
+	float Pitch = CAM_DEFAULTS::PITCH;
 	// camera options
-	float MovementSpeed =  SPEED;
-	float MouseSensitivity = SENSITIVITY;
-	float Zoom = ZOOM;
+	float MovementSpeed =  CAM_DEFAULTS::SPEED;
+	float MouseSensitivity = CAM_DEFAULTS::SENSITIVITY;
+	float Zoom = CAM_DEFAULTS::ZOOM;
 
 
 	Camera();

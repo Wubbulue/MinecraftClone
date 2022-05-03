@@ -16,6 +16,7 @@
 #include "Camera.h"
 #include "font.h"
 #include "Colors.h"
+#include "save.h"
 
 
 
@@ -43,6 +44,8 @@ bool frustumCullUsingCube = true;
 
 Player player;
 Camera camera;
+std::unique_ptr<worldSaver> saver;
+
 
 //Chunk chunk(123489u,0,0);
 World world(123489u);
@@ -230,7 +233,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_C && action == GLFW_PRESS) //Clear lines
 	{
-		cameraLines.clear();
+		world.addChunk(1, 0);
+
 	}
 	else if (key == GLFW_KEY_F3 && action == GLFW_PRESS) //Render debug info
 	{
@@ -247,8 +251,22 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		}
 		//drawCamFrustum();
 	}
+	else if (key == GLFW_KEY_K && action == GLFW_PRESS) //Write chunk 0,0
+	{
+		Chunk* chunk = world.getChunk(0, 0);
+		saver->writeChunk(*chunk);
+
+	}
+	else if (key == GLFW_KEY_L && action == GLFW_PRESS) //Load chunk 0,0
+	{
+		Chunk* chunk = world.getChunk(0, 0);
+		saver->tryFillChunk(chunk);
+
+	}
 	else if (key==GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
+		saver->writeWorld();
+		saver->closeWorld();
 	}
 }
 
@@ -262,6 +280,7 @@ void rotateAboutPoint(glm::mat4 &mat,float rotationAmount, float xOffset, float 
 
 int main()
 {
+	saver = std::make_unique<worldSaver>("C:/Programming_projects/Open-GL/saves/save.world",&camera);
 
 	cubeRadius = 1.0f / cos(glm::radians(45.0f));
 
@@ -272,7 +291,6 @@ int main()
 	world.addChunk(-1, -1);
 
 
-	camera.position.y = 50.0f;
 
 
 	// glfw: initialize and configure
@@ -454,19 +472,6 @@ int main()
 	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 	};
 
-	glm::vec3 cubePositions[] = {
-	glm::vec3(0.0f,  0.0f,  0.0f),
-	glm::vec3(2.0f,  5.0f, -15.0f),
-	glm::vec3(-1.5f, -2.2f, -2.5f),
-	glm::vec3(-3.8f, -2.0f, -12.3f),
-	glm::vec3(2.4f, -0.4f, -3.5f),
-	glm::vec3(-1.7f,  3.0f, -7.5f),
-	glm::vec3(1.3f, -2.0f, -2.5f),
-	glm::vec3(1.5f,  2.0f, -2.5f),
-	glm::vec3(1.5f,  0.2f, -1.5f),
-	glm::vec3(-1.3f,  1.0f, -1.5f)
-	};
-
 	//TODO: use classes for these
 	unsigned int VBO, VAO,lineVAO,lineVBO;
 	glGenVertexArrays(1, &VAO); // we can also generate multiple VAOs or buffers at the same time
@@ -587,7 +592,7 @@ int main()
 
 
 						auto blockType = chunk.blocks[index(x, z, y)].type;
-						if (blockType == BlockType::Air || !chunk.isBlockAdjacentToAir(x, y, z)) {
+						if (blockType == BlockTypes::Air || !chunk.isBlockAdjacentToAir(x, y, z)) {
 							continue;
 						}
 
@@ -627,10 +632,10 @@ int main()
 
 						shaderTexture.setMat4("model", model);
 
-						if (blockType == BlockType::Dirt) {
+						if (blockType == BlockTypes::Dirt) {
 							shaderTexture.setInt("texture", 0);
 						}
-						else if (blockType == BlockType::Stone) {
+						else if (blockType == BlockTypes::Stone) {
 							shaderTexture.setInt("texture", 1);
 						}
 

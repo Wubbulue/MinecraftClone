@@ -8,11 +8,12 @@
 #include <limits>
 #include <unordered_map>
 #include <array>
+#include <iostream>
 
 const int CHUNK_HEIGHT = 64;
 const int CHUNK_LENGTH = 64;
 
-#define index(x,z,y) (x)+((z)*CHUNK_LENGTH)+((y)*CHUNK_LENGTH*CHUNK_HEIGHT)
+#define index(x,z,y) (x)+((z)*CHUNK_LENGTH)+((y)*CHUNK_LENGTH*CHUNK_LENGTH)
 
 
 const float cubeVertices[] = {
@@ -60,16 +61,26 @@ const float cubeVertices[] = {
 };
 
 
-enum class BlockType {
-	Dirt,
-	Air,
-	Stone
+
+typedef uint8_t BlockType;
+
+//have to do this weird hacky thing because enums are 4 bytes long when we only need 1 byte for block type
+namespace BlockTypes {
+	const BlockType Air = 0;
+	const BlockType Stone = 1;
+	const BlockType Dirt = 2;
 };
+
+//enum class BlockType {
+//	Dirt,
+//	Air,
+//	Stone
+//};
 
 const char* blockTypeToString(BlockType type);
 
 struct Block {
-	BlockType type = BlockType::Air;
+	BlockType type = BlockTypes::Air;
 };
 
 struct BlockPosition {
@@ -135,12 +146,13 @@ class World {
 public:
 
 	siv::PerlinNoise::seed_type seed;
+	siv::PerlinNoise perlin;
 
-	//randomizes seed and regenerates
 	void populateChunks();
 	void populateChunk(Chunk &chunk);
+
+	//randomizes seed and regenerates
 	void regenerate();
-	siv::PerlinNoise perlin;
 
 	World(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
 		perlin = siv::PerlinNoise(seed);
@@ -158,7 +170,13 @@ public:
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
 	static BlockPosition findBlock(glm::vec3 position);
 
+	//gets chunk from block coords
+	//returns nullptr if it can't find chunk
 	Chunk* getChunkContainingBlock(const int& x,const int& z);
+
+	//gets chunk from chunk 
+	//returns nullptr if it can't find chunk
+	Chunk* getChunk(const int& x,const int& z);
 
 	~World() {
 		for (auto& [key, chunk] : chunks)
@@ -172,6 +190,8 @@ public:
 	void addChunk(int x, int z);
 
 	//this function hashes our two integers into a unique output
+	//TODO: test and understand this, int particular fact that long and int are the same length
+	//https://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
 	static long cantorHash(int a, int b);
 	std::unordered_map<long, Chunk> chunks;
 	
