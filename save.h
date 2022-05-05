@@ -7,6 +7,7 @@
 #include <vector>
 #include <filesystem>
 #include <iterator>
+#include <cstring>
 
 typedef float precision;
 //data offset for camera, three floats in position vector, and 2 floats for yaw and pitch
@@ -46,7 +47,7 @@ public:
 
 	void closeWorld();
 
-	void writeWorld();
+	void writePosition();
 
 	//this method recives a chunk and fills it if it exists in world file, otherwise it returns false
 	bool tryFillChunk(Chunk *chunk);
@@ -59,6 +60,7 @@ private:
 	//stores the cantor hash of chunks that we have made so far
 	std::vector<long> chunkList;
 	std::fstream file;
+
 
 };
 

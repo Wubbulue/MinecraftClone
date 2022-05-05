@@ -70,7 +70,7 @@ float outlineVerts[] = {
 	1.0f,1.0f,0.0f, //6
 	1.0f,1.0f,1.0f, //7
 
-	
+
 };
 
 uint8_t bLineIndices[] = {
@@ -90,19 +90,19 @@ uint8_t bLineIndices[] = {
 
 void drawCamFrustum() {
 	Frustum camFrustum = createFrustumFromCamera(camera, float(SCR_WIDTH) / float(SCR_HEIGHT));
-	cameraLines.emplace_back(Line(camera.position, camera.position+camFrustum.rightFace.normal, COLORS::red));
-	cameraLines.emplace_back(Line(camera.position,camera.position+camFrustum.leftFace.normal,COLORS::blue));
-	cameraLines.emplace_back(Line(camera.position, camera.position+camFrustum.topFace.normal, COLORS::purple));
-	cameraLines.emplace_back(Line(camera.position,camera.position+camFrustum.bottomFace.normal,COLORS::yellow));
-	cameraLines.emplace_back(Line(camera.position, camera.position+camFrustum.nearFace.normal, COLORS::cyan));
-	cameraLines.emplace_back(Line(camera.position,camera.position+camFrustum.farFace.normal,COLORS::white));
+	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.rightFace.normal, COLORS::red));
+	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.leftFace.normal, COLORS::blue));
+	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.topFace.normal, COLORS::purple));
+	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.bottomFace.normal, COLORS::yellow));
+	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.nearFace.normal, COLORS::cyan));
+	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.farFace.normal, COLORS::white));
 
 }
 
 void updateBlockPlayerLookingAt() {
 
 	BlockPosition oldPos = player.blockLookingAt;
-	if (world.findFirstSolid(Ray(camera.position, camera.direction), 30.0f,player.blockLookingAt)) {
+	if (world.findFirstSolid(Ray(camera.position, camera.direction), 30.0f, player.blockLookingAt)) {
 		player.isLookingAtBlock = true;
 		if (oldPos != player.blockLookingAt) {
 			//TODO: at times this is rendering too many lines, maybe check adjecent blocks for which lines to render
@@ -116,13 +116,13 @@ void updateBlockPlayerLookingAt() {
 			//12 lines in a cube loop
 			for (int i = 0; i < 12; i++) {
 				//line indexes
-				uint8_t j1 = bLineIndices[i * 2]; 
+				uint8_t j1 = bLineIndices[i * 2];
 				uint8_t j2 = bLineIndices[(i * 2) + 1];
 				j1 *= 3;
 				j2 *= 3;
 
-				glm::vec3 start(fx+outlineVerts[j1],fy+outlineVerts[j1+1],fz+outlineVerts[j1+2]);
-				glm::vec3 end(fx+outlineVerts[j2],fy+outlineVerts[j2+1],fz+outlineVerts[j2+2]);
+				glm::vec3 start(fx + outlineVerts[j1], fy + outlineVerts[j1 + 1], fz + outlineVerts[j1 + 2]);
+				glm::vec3 end(fx + outlineVerts[j2], fy + outlineVerts[j2 + 1], fz + outlineVerts[j2 + 2]);
 
 				blockLines.emplace_back(Line(start, end, glm::vec3(0.8f, 0.2f, 0.2f)));
 
@@ -155,12 +155,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
 		glm::vec3 start = camera.position;
-		glm::vec3 end = start+(camera.direction * lineLength);
+		glm::vec3 end = start + (camera.direction * lineLength);
 		cameraLines.emplace_back(Line(start, end, glm::vec3(1.0f, 0.0f, 0.0f)));
 
 		auto t1 = std::chrono::high_resolution_clock::now();
-		Ray ray(start,camera.direction);
-		world.mineHoleCast(ray,30.0f);
+		Ray ray(start, camera.direction);
+		world.mineHoleCast(ray, 30.0f);
 		auto t2 = std::chrono::high_resolution_clock::now();
 
 		// floating-point duration: no duration_cast needed
@@ -168,7 +168,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		// integral duration: requires duration_cast
 		auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
-		
+
 		std::cout << "Took " << int_ms.count() << " microseconds to elimnate blocks" << std::endl;
 
 
@@ -200,7 +200,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 	lastY = ypos;
 	camera.ProcessMouseMovement(xoffset, yoffset);
 	updateBlockPlayerLookingAt();
-	
+
 
 }
 
@@ -229,7 +229,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_P && action == GLFW_PRESS) //Print position
 	{
-		printf("Position:%f,%f,%f \n",camera.position.x,camera.position.y,camera.position.z);
+		printf("Position:%f,%f,%f \n", camera.position.x, camera.position.y, camera.position.z);
 	}
 	else if (key == GLFW_KEY_C && action == GLFW_PRESS) //Clear lines
 	{
@@ -255,32 +255,44 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		Chunk* chunk = world.getChunk(0, 0);
 		saver->writeChunk(*chunk);
+		chunk = world.getChunk(-1, 0);
+		saver->writeChunk(*chunk);
+		chunk = world.getChunk(0, -1);
+		saver->writeChunk(*chunk);
+		chunk = world.getChunk(-1, -1);
+		saver->writeChunk(*chunk);
 
 	}
 	else if (key == GLFW_KEY_L && action == GLFW_PRESS) //Load chunk 0,0
 	{
 		Chunk* chunk = world.getChunk(0, 0);
 		saver->tryFillChunk(chunk);
+		chunk = world.getChunk(-1, 0);
+		saver->tryFillChunk(chunk);
+		chunk = world.getChunk(0, -1);
+		saver->tryFillChunk(chunk);
+		chunk = world.getChunk(-1, -1);
+		saver->tryFillChunk(chunk);
 
 	}
-	else if (key==GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+	else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
-		saver->writeWorld();
+		saver->writePosition();
 		saver->closeWorld();
 	}
 }
 
 //relatively rotates something around a point
-void rotateAboutPoint(glm::mat4 &mat,float rotationAmount, float xOffset, float yOffset) {
-		mat = glm::translate(mat, glm::vec3(xOffset,yOffset, 0.0f));
-		mat = glm::rotate(mat, rotationAmount, glm::vec3(0.0f, 0.0f, 1.0f));
-		mat = glm::translate(mat, glm::vec3(-xOffset,-yOffset, 0.0f));
+void rotateAboutPoint(glm::mat4& mat, float rotationAmount, float xOffset, float yOffset) {
+	mat = glm::translate(mat, glm::vec3(xOffset, yOffset, 0.0f));
+	mat = glm::rotate(mat, rotationAmount, glm::vec3(0.0f, 0.0f, 1.0f));
+	mat = glm::translate(mat, glm::vec3(-xOffset, -yOffset, 0.0f));
 }
 
 
 int main()
 {
-	saver = std::make_unique<worldSaver>("C:/Programming_projects/Open-GL/saves/save.world",&camera);
+	saver = std::make_unique<worldSaver>("C:/Programming_projects/Open-GL/saves/save.world", &camera);
 
 	cubeRadius = 1.0f / cos(glm::radians(45.0f));
 
@@ -326,7 +338,7 @@ int main()
 
 	//set input callbacks
 	glfwSetKeyCallback(window, key_callback);
-	glfwSetMouseButtonCallback(window,mouse_button_callback);
+	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
@@ -473,7 +485,7 @@ int main()
 	};
 
 	//TODO: use classes for these
-	unsigned int VBO, VAO,lineVAO,lineVBO;
+	unsigned int VBO, VAO, lineVAO, lineVBO;
 	glGenVertexArrays(1, &VAO); // we can also generate multiple VAOs or buffers at the same time
 	glGenBuffers(1, &VBO);
 
@@ -512,7 +524,7 @@ int main()
 	glm::mat4 view = glm::mat4(1.0f);
 	glm::mat4 projection = glm::mat4(1.0f);
 
-	
+
 
 	TextWriter fontWriter;
 
@@ -522,7 +534,7 @@ int main()
 
 	// render loop
 	// -----------
-	float lastTime=glfwGetTime();
+	float lastTime = glfwGetTime();
 	while (!glfwWindowShouldClose(window))
 	{
 
@@ -615,7 +627,7 @@ int main()
 
 
 						//offset by half voxel for center
-						model = glm::translate(model, glm::vec3(float(x + 0.5f)+offsetX, float(y + 0.5f), float(z + 0.5f)+offsetZ));
+						model = glm::translate(model, glm::vec3(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ));
 
 						if (player.isLookingAtBlock) {
 							auto p = player.blockLookingAt;
@@ -660,7 +672,7 @@ int main()
 
 
 
-		for (auto const &line:cameraLines) {
+		for (auto const& line : cameraLines) {
 			lineShader.setVec3("color", line.lineColor);
 			MVP = projection * view * line.modelMatrix;
 			lineShader.setMat4("MVP", MVP);
@@ -668,7 +680,7 @@ int main()
 		}
 
 
-		for (auto const &line:blockLines) {
+		for (auto const& line : blockLines) {
 			lineShader.setVec3("color", line.lineColor);
 			MVP = projection * view * line.modelMatrix;
 			lineShader.setMat4("MVP", MVP);
@@ -680,7 +692,7 @@ int main()
 			fontWriter.RenderText(std::to_string(frameRate), 25.0f, SCR_HEIGHT - 100, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
 			std::string posString = std::to_string(camera.position.x) + ", " + std::to_string(camera.position.y) + ", " + std::to_string(camera.position.z);
 			fontWriter.RenderText(posString, 25.0f, SCR_HEIGHT - 150, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-			std::string culledString = "Blocks culled: "+std::to_string(blocksCulled);
+			std::string culledString = "Blocks culled: " + std::to_string(blocksCulled);
 			fontWriter.RenderText(culledString, 25.0f, SCR_HEIGHT - 200, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
 		}
 
