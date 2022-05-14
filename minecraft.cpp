@@ -162,30 +162,33 @@ Box3 Chunk::getBox() {
 }
 
 
-long World::cantorHash(int a, int b)
+int64_t World::genHash(int32_t a, int32_t b)
 {
-	long A = (unsigned long)(a >= 0 ? 2 * (long)a : -2 * (long)a - 1);
-	long B = (unsigned long)(b >= 0 ? 2 * (long)b : -2 * (long)b - 1);
-	long C = (long)((A >= B ? A * A + A + B : A + B * B) / 2);
-	return a < 0 && b < 0 || a >= 0 && b >= 0 ? C : -C - 1;
+	//UNDERSTAND: i don't know why we have to cast like this here
+	return (uint64_t)a << 32 | (uint32_t)b;
+}
+
+void World::retrieveHash(int32_t* a, int32_t* b, int64_t c)
+{
+	*a = c>>32;
+	*b = c & 0xFFFFFFFF;
 }
 
 void World::addChunk(int x, int z) {
 
 
-	auto hash = cantorHash(x, z);
+	auto hash = genHash(x, z);
 	if (chunks.find(hash) != chunks.end()) {
 		std::cout << "Chunk already exists, nothing added" << std::endl;
 		return;
 	}
 
 	//this is probably copying all of our blocks, probably inneficient TODO
-	//chunks.insert(std::pair<long,Chunk>(cantorHash(x,z),chunk));
 	Chunk chunk(x,z);
 
 	populateChunk(chunk);
 
-	chunks.insert(std::pair<long,Chunk>(hash,chunk));
+	chunks.insert(std::pair<int64_t,Chunk>(hash,chunk));
 
 }
 
@@ -364,7 +367,7 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 
 }
 
-BlockPosition World::findBlock(glm::vec3 position) {
+BlockPosition World::findBlock(const glm::vec3 &position) {
 
 	//TODO: find better assert solution
 
@@ -391,16 +394,35 @@ BlockPosition World::findBlock(glm::vec3 position) {
 
 }
 
+void World::findChunk(const glm::vec3& position, int* chunkX, int* chunkZ)
+{
+
+	int intx = std::floor(position.x);
+	int intz = std::floor(position.z);
+
+	*chunkX = intx / CHUNK_LENGTH;
+	*chunkZ = intz / CHUNK_LENGTH;
+
+	if (intx < 0) {
+		*chunkX -= 1;
+	}
+
+	if (intz < 0) {
+		*chunkZ -= 1;
+	}
+
+}
+
 Chunk* World::getChunkContainingBlock(const int& x,const int& z) {
 	
 	int chunkX = x / CHUNK_LENGTH;
 	int chunkZ = z / CHUNK_LENGTH;
 
-	if (x < 0) {
+	if (x < 0&&(x%16!=0)) {
 		chunkX -= 1;
 	}
 
-	if (z < 0) {
+	if (z < 0&&(z%16!=0)) {
 		chunkZ -= 1;
 	}
 
@@ -409,9 +431,15 @@ Chunk* World::getChunkContainingBlock(const int& x,const int& z) {
 
 }
 
+Chunk* World::getChunkContainingPosition(const glm::vec3& position)
+{
+	auto blockPos = findBlock(position);
+	return getChunkContainingBlock(blockPos.x, blockPos.z);
+}
+
 Chunk* World::getChunk(const int& x, const int& z)
 {
-	auto hash = cantorHash(x, z);
+	auto hash = genHash(x, z);
 	auto elementFound = chunks.find(hash);
 	if (elementFound != chunks.end()) {
 		return &(elementFound->second);

@@ -11,7 +11,7 @@
 #include <iostream>
 
 const int CHUNK_HEIGHT = 64;
-const int CHUNK_LENGTH = 64;
+const int CHUNK_LENGTH = 16;
 
 #define index(x,z,y) (x)+((z)*CHUNK_LENGTH)+((y)*CHUNK_LENGTH*CHUNK_LENGTH)
 
@@ -109,7 +109,7 @@ public:
 	//Block blocks[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_HEIGHT];
 	Block* blocks = new Block[CHUNK_LENGTH*CHUNK_LENGTH*CHUNK_HEIGHT];
 
-	//this function returns a block given a block position this is global
+	//this function returns a block given a block position that is global
 	Block* indexAbsolute(BlockPosition pos);
 	
 	Chunk(int inX,int inZ) : x(inX), z(inZ) {
@@ -168,11 +168,15 @@ public:
 	uint32_t numBlocks();
 
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
-	static BlockPosition findBlock(glm::vec3 position);
+	static BlockPosition findBlock(const glm::vec3 &position);
+	
+	static void findChunk(const glm::vec3 &position, int *chunkX,int *chunkZ);
 
 	//gets chunk from block coords
 	//returns nullptr if it can't find chunk
 	Chunk* getChunkContainingBlock(const int& x,const int& z);
+
+	Chunk* getChunkContainingPosition(const glm::vec3 &position);
 
 	//gets chunk from chunk 
 	//returns nullptr if it can't find chunk
@@ -186,14 +190,17 @@ public:
 	}
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
-	uint16_t renderDistance = 4;
+	uint16_t renderDistance = 3;
 	void addChunk(int x, int z);
 
-	//this function hashes our two integers into a unique output
-	//TODO: test and understand this, int particular fact that long and int are the same length
+	//this function mashes our two 4 byte integers into a single 8 byte output
 	//https://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
-	static long cantorHash(int a, int b);
-	std::unordered_map<long, Chunk> chunks;
+	static int64_t genHash(int32_t a, int32_t b);
+
+	//opposite of above
+	static void retrieveHash(int32_t *a, int32_t *b, int64_t c);
+
+	std::unordered_map<int64_t, Chunk> chunks;
 	
 
 

@@ -13,7 +13,6 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
-#include "Camera.h"
 #include "font.h"
 #include "Colors.h"
 #include "save.h"
@@ -43,12 +42,13 @@ bool frustumCullUsingCube = true;
 
 
 Player player;
-Camera camera;
-std::unique_ptr<worldSaver> saver;
+std::shared_ptr<worldSaver> saver;
+std::unique_ptr<ChunkManager> chunkManager;
 
 
 //Chunk chunk(123489u,0,0);
-World world(123489u);
+//World world(123489u);
+World world(153389u);
 bool wireframe = false;
 
 const float lineLength = 30.0f;
@@ -89,20 +89,20 @@ uint8_t bLineIndices[] = {
 };
 
 void drawCamFrustum() {
-	Frustum camFrustum = createFrustumFromCamera(camera, float(SCR_WIDTH) / float(SCR_HEIGHT));
-	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.rightFace.normal, COLORS::red));
-	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.leftFace.normal, COLORS::blue));
-	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.topFace.normal, COLORS::purple));
-	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.bottomFace.normal, COLORS::yellow));
-	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.nearFace.normal, COLORS::cyan));
-	cameraLines.emplace_back(Line(camera.position, camera.position + camFrustum.farFace.normal, COLORS::white));
+	Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
+	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.rightFace.normal, COLORS::red));
+	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.leftFace.normal, COLORS::blue));
+	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.topFace.normal, COLORS::purple));
+	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.bottomFace.normal, COLORS::yellow));
+	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.nearFace.normal, COLORS::cyan));
+	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.farFace.normal, COLORS::white));
 
 }
 
 void updateBlockPlayerLookingAt() {
 
 	BlockPosition oldPos = player.blockLookingAt;
-	if (world.findFirstSolid(Ray(camera.position, camera.direction), 30.0f, player.blockLookingAt)) {
+	if (world.findFirstSolid(Ray(player.cam.position, player.cam.direction), 30.0f, player.blockLookingAt)) {
 		player.isLookingAtBlock = true;
 		if (oldPos != player.blockLookingAt) {
 			//TODO: at times this is rendering too many lines, maybe check adjecent blocks for which lines to render
@@ -154,12 +154,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
-		glm::vec3 start = camera.position;
-		glm::vec3 end = start + (camera.direction * lineLength);
+		glm::vec3 start = player.cam.position;
+		glm::vec3 end = start + (player.cam.direction * lineLength);
 		cameraLines.emplace_back(Line(start, end, glm::vec3(1.0f, 0.0f, 0.0f)));
 
 		auto t1 = std::chrono::high_resolution_clock::now();
-		Ray ray(start, camera.direction);
+		Ray ray(start, player.cam.direction);
 		world.mineHoleCast(ray, 30.0f);
 		auto t2 = std::chrono::high_resolution_clock::now();
 
@@ -198,7 +198,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 
 	lastX = xpos;
 	lastY = ypos;
-	camera.ProcessMouseMovement(xoffset, yoffset);
+	player.cam.ProcessMouseMovement(xoffset, yoffset);
 	updateBlockPlayerLookingAt();
 
 
@@ -206,7 +206,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	camera.processSroll(float(yoffset));
+	player.cam.processSroll(float(yoffset));
 }
 
 
@@ -229,7 +229,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_P && action == GLFW_PRESS) //Print position
 	{
-		printf("Position:%f,%f,%f \n", camera.position.x, camera.position.y, camera.position.z);
+		printf("Position:%f,%f,%f \n", player.cam.position.x, player.cam.position.y, player.cam.position.z);
 	}
 	else if (key == GLFW_KEY_C && action == GLFW_PRESS) //Clear lines
 	{
@@ -253,26 +253,26 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_K && action == GLFW_PRESS) //Write chunk 0,0
 	{
-		Chunk* chunk = world.getChunk(0, 0);
-		saver->writeChunk(*chunk);
-		chunk = world.getChunk(-1, 0);
-		saver->writeChunk(*chunk);
-		chunk = world.getChunk(0, -1);
-		saver->writeChunk(*chunk);
-		chunk = world.getChunk(-1, -1);
-		saver->writeChunk(*chunk);
+
+		//auto r = world.renderDistance;
+		//for (int i = r; i >= -r; i--) {
+		//	for (int j = r; j >= -r; j--) {
+		//		Chunk* chunk = world.getChunk(i, j);
+		//		saver->writeChunk(*chunk);
+		//	}
+		//}
 
 	}
 	else if (key == GLFW_KEY_L && action == GLFW_PRESS) //Load chunk 0,0
 	{
-		Chunk* chunk = world.getChunk(0, 0);
-		saver->tryFillChunk(chunk);
-		chunk = world.getChunk(-1, 0);
-		saver->tryFillChunk(chunk);
-		chunk = world.getChunk(0, -1);
-		saver->tryFillChunk(chunk);
-		chunk = world.getChunk(-1, -1);
-		saver->tryFillChunk(chunk);
+
+		//auto r = world.renderDistance;
+		//for (int i = r; i >= -r; i--) {
+		//	for (int j = r; j >= -r; j--) {
+		//		Chunk* chunk = world.getChunk(i, j);
+		//		saver->tryFillChunk(chunk);
+		//	}
+		//}
 
 	}
 	else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -292,15 +292,19 @@ void rotateAboutPoint(glm::mat4& mat, float rotationAmount, float xOffset, float
 
 int main()
 {
-	saver = std::make_unique<worldSaver>("C:/Programming_projects/Open-GL/saves/save.world", &camera);
+	saver = std::make_shared<worldSaver>("C:/Programming_projects/Open-GL/saves/save.world", &player);
+	chunkManager = std::make_unique<ChunkManager>(saver.get(), &player, &world);
+	chunkManager->initWorld();
+
+	
 
 	cubeRadius = 1.0f / cos(glm::radians(45.0f));
 
 
-	world.addChunk(0, 0);
-	world.addChunk(-1, 0);
-	world.addChunk(0, -1);
-	world.addChunk(-1, -1);
+	//world.addChunk(0, 0);
+	//world.addChunk(-1, 0);
+	//world.addChunk(0, -1);
+	//world.addChunk(-1, -1);
 
 
 
@@ -555,9 +559,10 @@ int main()
 
 
 
-		if (camera.moveCamera(window, elapsedTime)) {
+		if (player.checkPosition(window, elapsedTime)) {
 			//player could be looking at new block after camera movement
 			updateBlockPlayerLookingAt();
+			chunkManager->checkNewChunk();
 		}
 
 		// bind textures on corresponding texture units
@@ -570,9 +575,9 @@ int main()
 
 		//update coordiante transformations
 		projection = glm::mat4(1.0f);
-		projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, camera.near, camera.far);
+		projection = glm::perspective(glm::radians(player.cam.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, player.cam.near, player.cam.far);
 
-		view = camera.view();
+		view = player.cam.view();
 
 		diffuseShader.use();
 		diffuseShader.setMat4("model", model);
@@ -589,7 +594,7 @@ int main()
 
 
 		int blocksCulled = 0;
-		Frustum camFrustum = createFrustumFromCamera(camera, float(SCR_WIDTH) / float(SCR_HEIGHT));
+		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
 		//TODO: implement proper instancing
 		for (auto& [key, chunk] : world.chunks)
 		{
@@ -690,7 +695,7 @@ int main()
 
 		if (renderDebugInfo) {
 			fontWriter.RenderText(std::to_string(frameRate), 25.0f, SCR_HEIGHT - 100, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-			std::string posString = std::to_string(camera.position.x) + ", " + std::to_string(camera.position.y) + ", " + std::to_string(camera.position.z);
+			std::string posString = std::to_string(player.cam.position.x) + ", " + std::to_string(player.cam.position.y) + ", " + std::to_string(player.cam.position.z);
 			fontWriter.RenderText(posString, 25.0f, SCR_HEIGHT - 150, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
 			std::string culledString = "Blocks culled: " + std::to_string(blocksCulled);
 			fontWriter.RenderText(culledString, 25.0f, SCR_HEIGHT - 200, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));

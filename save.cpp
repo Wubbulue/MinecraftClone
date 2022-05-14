@@ -1,23 +1,12 @@
 #include "save.h"
 
-bool loadWorld(const std::string& filename, World& world, Camera& cam) {
-	std::ifstream input(filename.c_str(), std::ios::in | std::ios::binary);
-
-	if (!input.is_open()) {
-		std::cout << "Error with opening" << filename << ". World not loaded." << std::endl;
-		return false;
-	}
-
-
-}
-
 
 void worldSaver::closeWorld() {
 	file.close();
 
 }
 
-worldSaver::worldSaver(const std::string& inFile, Camera *inCam) : cam(inCam),filename(inFile) {
+worldSaver::worldSaver(const std::string& inFile, Player *inPlayer) : player(inPlayer),filename(inFile) {
 
 
 	bool worldExists = std::filesystem::exists(filename) && std::filesystem::file_size(filename) > 0 ;
@@ -48,21 +37,22 @@ worldSaver::worldSaver(const std::string& inFile, Camera *inCam) : cam(inCam),fi
 
 	if (worldExists) {
 
-		file.read((char*)&cam->position.x, sizeof(precision));
-		file.read((char*)&cam->position.y, sizeof(precision));
-		file.read((char*)&cam->position.z, sizeof(precision));
+		glm::vec3 tempPos;
+		file.read((char*)&tempPos.x, sizeof(precision));
+		file.read((char*)&tempPos.y, sizeof(precision));
+		file.read((char*)&tempPos.z, sizeof(precision));
+		player->movePlayer(tempPos);
 
-		file.read((char*)&cam->Yaw, sizeof(precision));
-		file.read((char*)&cam->Pitch, sizeof(precision));
+		file.read((char*)&player->cam.Yaw, sizeof(precision));
+		file.read((char*)&player->cam.Pitch, sizeof(precision));
 
 		uint32_t numChunks;
 		file.read((char*)&numChunks, sizeof(uint32_t));
 		chunkList.resize(numChunks);
-		for (int i = 0; i < numChunks; i++) {
-			file.read((char*)&chunkList[i], sizeof(long));
-		}
 
-		cam->updateCameraVectors();
+		file.read((char*)chunkList.data(), sizeof(int64_t)*numChunks);
+
+		player->cam.updateCameraVectors();
 
 	}
 
@@ -72,22 +62,22 @@ void worldSaver::writePosition() {
 
 	file.seekp(0);
 
-	file.write((char*)&cam->position.x, sizeof(precision));
-	file.write((char*)&cam->position.y, sizeof(precision));
-	file.write((char*)&cam->position.z, sizeof(precision));
+	file.write((char*)&player->cam.position.x, sizeof(precision));
+	file.write((char*)&player->cam.position.y, sizeof(precision));
+	file.write((char*)&player->cam.position.z, sizeof(precision));
 
-	file.write((char*)&cam->Yaw, sizeof(precision));
-	file.write((char*)&cam->Pitch, sizeof(precision));
+	file.write((char*)&player->cam.Yaw, sizeof(precision));
+	file.write((char*)&player->cam.Pitch, sizeof(precision));
 
 }
 
 bool worldSaver::tryFillChunk(Chunk* chunk) {
-	long hash = World::cantorHash(chunk->x, chunk->z);
+	auto hash = World::genHash(chunk->x, chunk->z);
 	auto it = std::find(chunkList.begin(), chunkList.end(), hash);
 	auto pos = std::distance(chunkList.begin(), it);
 	//we found chunk, fill it and return true
 	if (it != chunkList.end()) {
-		file.seekg(cameraDataOffset+sizeof(uint32_t) + chunkList.size() * sizeof(long) + chunkDataOffset * pos);
+		file.seekg(cameraDataOffset+sizeof(uint32_t) + chunkList.size() * sizeof(int64_t) + chunkDataOffset * pos);
 		file.read((char*)chunk->blocks, chunkDataOffset);
 		return true;
 	}
@@ -100,12 +90,13 @@ bool worldSaver::tryFillChunk(Chunk* chunk) {
 
 void worldSaver::writeChunk(const Chunk &chunk) {
 	
-	long hash = World::cantorHash(chunk.x, chunk.z);
+	printf("wrote a chunk\n");
+	auto hash = World::genHash(chunk.x, chunk.z);
 	auto it = std::find(chunkList.begin(), chunkList.end(), hash);
 	auto pos = std::distance(chunkList.begin(), it);
 	if (it != chunkList.end()) {
 		//we found our chunk, go to it and write the new one
-		file.seekp(cameraDataOffset+sizeof(uint32_t) + chunkList.size() * sizeof(long) + chunkDataOffset * pos);
+		file.seekp(cameraDataOffset+sizeof(uint32_t) + chunkList.size() * sizeof(int64_t) + chunkDataOffset * pos);
 		file.write((char*)chunk.blocks, chunkDataOffset);
 		return;
 	}
@@ -116,13 +107,13 @@ void worldSaver::writeChunk(const Chunk &chunk) {
 		//have to do this buffer workaround cause we can't append in the middle of a file
 		//make buffer
 		auto chunkDataSize = chunkList.size() * CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_HEIGHT;
-		std::vector<char> tempBuff(4+chunkDataSize);
-		std::memcpy(tempBuff.data(), &hash, sizeof(long));
-		file.seekg(cameraDataOffset+4+chunkList.size()*4);
-		file.read(tempBuff.data() + 4, chunkDataSize);
+		std::vector<char> tempBuff(sizeof(int64_t) + chunkDataSize);
+		std::memcpy(tempBuff.data(), &hash, sizeof(int64_t));
+		file.seekg(cameraDataOffset+4+chunkList.size()*sizeof(int64_t));
+		file.read(tempBuff.data() + sizeof(int64_t), chunkDataSize);
 
 		//write new buffer
-		file.seekp(cameraDataOffset+4+chunkList.size()*4);
+		file.seekp(cameraDataOffset+4+chunkList.size()*sizeof(int64_t));
 		file.write(tempBuff.data(), tempBuff.size());
 		chunkList.push_back(hash);
 
@@ -138,5 +129,103 @@ void worldSaver::writeChunk(const Chunk &chunk) {
 		return;
 
 	}
+}
+
+void ChunkManager::initWorld()
+{
+	auto r = world->renderDistance;
+	for (int i = r; i >= -r; i--) {
+		for (int j = r; j >= -r; j--) {
+			loadChunk(player->chunkX+i, player->chunkZ+j);
+		}
+	}
+}
+
+void ChunkManager::checkNewChunk()
+{
+	int chunkDiffX = player->chunkX-oldChunkX;
+	int chunkDiffZ = player->chunkZ-oldChunkZ;
+
+	if (chunkDiffX != 0 || chunkDiffZ != 0) {
+		auto r = world->renderDistance;
+		std::set<int64_t> expectedChunks;
+		std::set<int64_t> currentChunks;
+
+		for (int i = r; i >= -r; i--) {
+			for (int j = r; j >= -r; j--) {
+				auto hash = World::genHash(i+player->chunkX, j+player->chunkZ);
+				expectedChunks.insert(hash);
+			}
+		}
+
+		for (const auto& [key, value] : world->chunks) {
+			currentChunks.insert(key);
+		}
+
+		//load any expected chunks not found
+		for (const auto& c : expectedChunks) {
+			auto test = currentChunks.end();
+			auto exists = std::binary_search(currentChunks.begin(), currentChunks.end(), c);
+			//auto it = std::find(currentChunks.begin(), currentChunks.end(), c);
+			//if (it == currentChunks.end()) {
+			if (!exists) {
+				int32_t x,z;
+				World::retrieveHash(&x, &z, c);
+				loadChunk(x, z);
+				std::cout << "Loaded: " << x << " " << z << std::endl;
+			}
+		}
+
+		//unload old chunks
+		for (const auto& c : currentChunks) {
+			auto exists = std::binary_search(expectedChunks.begin(), expectedChunks.end(), c);
+			if (!exists) {
+				unloadChunk(c);
+				int32_t x,z;
+				World::retrieveHash(&x, &z, c);
+				std::cout << "unloaded: " << x << " " << z << std::endl;
+			}
+		}
+
+
+	}
+
+	oldChunkX = player->chunkX;
+	oldChunkZ = player->chunkZ;
+	
 
 }
+
+void ChunkManager::loadChunk(const int& chunkX, const int& chunkZ)
+{
+	auto hash = World::genHash(chunkX, chunkZ);
+	auto foundElement = world->chunks.find(hash);
+	//only do something if chunk isn't already loaded
+	if (foundElement == world->chunks.end()) {
+		Chunk chunk(chunkX,chunkZ);
+		bool filledChunk = saver->tryFillChunk(&chunk);
+		//if we didn't find chunk in world file, then generate it
+		if (!filledChunk) {
+			world->populateChunk(chunk);
+			saver->writeChunk(chunk);
+		}
+		world->chunks.insert(std::pair<int64_t,Chunk>(hash,chunk));
+	}
+
+}
+
+
+void ChunkManager::unloadChunk(const int& chunkX, const int& chunkZ)
+{
+
+	auto hash = World::genHash(chunkX, chunkZ);
+	world->chunks.erase(hash);
+
+}
+
+void ChunkManager::unloadChunk(const int64_t& hash)
+{
+	world->chunks.erase(hash);
+}
+
+
