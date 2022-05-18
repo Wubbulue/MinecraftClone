@@ -229,12 +229,7 @@ void World::populateChunk(Chunk& chunk) {
 			//TODO: make this better
 			if (pixColor == CHUNK_HEIGHT) pixColor--;
 
-			if (z == 0 || z == CHUNK_LENGTH - 1 || x == 0 || x == CHUNK_LENGTH - 1) {
-				chunk.blocks[index(x, z, pixColor)].type = BlockTypes::Stone;
-			}
-			else {
-				chunk.blocks[index(x, z, pixColor)].type = BlockTypes::Dirt;
-			}
+			chunk.blocks[index(x, z, pixColor)].type = BlockTypes::Dirt;
 
 			for (int y = pixColor - 1; y > -1; y--) {
 				chunk.blocks[index(x, z, y)].type = BlockTypes::Stone;
