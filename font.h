@@ -23,7 +23,7 @@ public:
     unsigned int VAO, VBO;
 
     //Shader s;
-	Shader s = Shader("C:/Programming_projects/Open-GL/shaders/vert_text.glsl", "C:/Programming_projects/Open-GL/shaders/frag_text.glsl");
+	Shader s = Shader("../shaders/vert_text.glsl", "D:/Programming/Minecraft-gl/Opengl2/shaders/frag_text.glsl");
     glm::mat4 projection = glm::ortho(0.0f, 1200.0f, 0.0f, 1000.0f);
 
     std::map<char, Character> Characters;

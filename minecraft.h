@@ -16,50 +16,73 @@ const int CHUNK_LENGTH = 16;
 #define index(x,z,y) (x)+((z)*CHUNK_LENGTH)+((y)*CHUNK_LENGTH*CHUNK_LENGTH)
 
 
-const float cubeVertices[] = {
--0.5f, -0.5f, -0.5f,
- 0.5f, -0.5f, -0.5f,
- 0.5f,  0.5f, -0.5f,
- 0.5f,  0.5f, -0.5f,
--0.5f,  0.5f, -0.5f,
--0.5f, -0.5f, -0.5f,
+const float cubeVertices[]{
+	//negative z
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+	 0.5f, -0.5f, -0.5f,  0.0625f, 0.0f,
+	 0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
+	 0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
+	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 
--0.5f, -0.5f,  0.5f,
- 0.5f, -0.5f,  0.5f,
- 0.5f,  0.5f,  0.5f,
- 0.5f,  0.5f,  0.5f,
--0.5f,  0.5f,  0.5f,
--0.5f, -0.5f,  0.5f,
+	//positive z
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	 0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
+	 0.5f,  0.5f,  0.5f,  0.0625f, 0.0625f,
+	 0.5f,  0.5f,  0.5f,  0.0625f, 0.0625f,
+	-0.5f,  0.5f,  0.5f,  0.0f, 0.0625f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
 
--0.5f,  0.5f,  0.5f,
--0.5f,  0.5f, -0.5f,
--0.5f, -0.5f, -0.5f,
--0.5f, -0.5f, -0.5f,
--0.5f, -0.5f,  0.5f,
--0.5f,  0.5f,  0.5f,
+	//negative x
+	-0.5f,  0.5f,  0.5f,  0.0625f, 0.0625f,
+	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+	-0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
+	-0.5f,  0.5f,  0.5f,  0.0625f, 0.0625f,
 
- 0.5f,  0.5f,  0.5f,
- 0.5f,  0.5f, -0.5f,
- 0.5f, -0.5f, -0.5f,
- 0.5f, -0.5f, -0.5f,
- 0.5f, -0.5f,  0.5f,
- 0.5f,  0.5f,  0.5f,
+	//positve x
+	 0.5f,  0.5f,  0.5f,  0.0f, 0.0625f,
+	 0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
+	 0.5f, -0.5f, -0.5f,  0.0625f, 0.0f,
+	 0.5f, -0.5f, -0.5f,  0.0625f, 0.0f,
+	 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	 0.5f,  0.5f,  0.5f,  0.0f, 0.0625f,
 
--0.5f, -0.5f, -0.5f,
- 0.5f, -0.5f, -0.5f,
- 0.5f, -0.5f,  0.5f,
- 0.5f, -0.5f,  0.5f,
--0.5f, -0.5f,  0.5f,
--0.5f, -0.5f, -0.5f,
+	//negative y
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0625f,
+	 0.5f, -0.5f, -0.5f,  0.0625f, 0.0625f,
+	 0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
+	 0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0625f,
 
--0.5f,  0.5f, -0.5f,
- 0.5f,  0.5f, -0.5f,
- 0.5f,  0.5f,  0.5f,
- 0.5f,  0.5f,  0.5f,
--0.5f,  0.5f,  0.5f,
--0.5f,  0.5f, -0.5f,
+	//positive y
+	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f,
+	 0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
+	 0.5f,  0.5f,  0.5f,  0.0625f, 0.0f,
+	 0.5f,  0.5f,  0.5f,  0.0625f, 0.0f,
+	-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f
 };
 
+const uint8_t dirtFaces[]{
+	3,3,3,3,3,3,
+	3,3,3,3,3,3,
+	3,3,3,3,3,3,
+	3,3,3,3,3,3,
+	2,2,2,2,2,2,
+	0,0,0,0,0,0,
+};
+
+const uint8_t stoneFaces[]{
+	1,1,1,1,1,1,
+	1,1,1,1,1,1,
+	1,1,1,1,1,1,
+	1,1,1,1,1,1,
+	1,1,1,1,1,1,
+	1,1,1,1,1,1,
+};
 
 
 typedef uint8_t BlockType;
@@ -172,15 +195,22 @@ public:
 	
 	static void findChunk(const glm::vec3 &position, int *chunkX,int *chunkZ);
 
+
 	//gets chunk from block coords
 	//returns nullptr if it can't find chunk
 	Chunk* getChunkContainingBlock(const int& x,const int& z);
 
 	Chunk* getChunkContainingPosition(const glm::vec3 &position);
+	Chunk* getChunkContainingBlock(const BlockPosition& pos);
+
+	//this function tries to find a block within the worl given a block position
+	Block* getBlock(const BlockPosition &pos);
 
 	//gets chunk from chunk 
 	//returns nullptr if it can't find chunk
 	Chunk* getChunk(const int& x,const int& z);
+
+	bool isBlockAdjacentToAir(BlockPosition pos);
 
 	~World() {
 		for (auto& [key, chunk] : chunks)

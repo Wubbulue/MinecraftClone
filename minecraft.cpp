@@ -422,14 +422,41 @@ Chunk* World::getChunkContainingBlock(const int& x,const int& z) {
 	}
 
 	return getChunk(chunkX, chunkZ);
+}
 
+Chunk* World::getChunkContainingBlock(const BlockPosition& pos) {
+	
+	int chunkX = pos.x / CHUNK_LENGTH;
+	int chunkZ = pos.z / CHUNK_LENGTH;
 
+	if (pos.x < 0&&(pos.x%16!=0)) {
+		chunkX -= 1;
+	}
+
+	if (pos.z < 0&&(pos.z%16!=0)) {
+		chunkZ -= 1;
+	}
+
+	return getChunk(chunkX, chunkZ);
 }
 
 Chunk* World::getChunkContainingPosition(const glm::vec3& position)
 {
 	auto blockPos = findBlock(position);
 	return getChunkContainingBlock(blockPos.x, blockPos.z);
+}
+
+Block* World::getBlock(const BlockPosition& pos)
+{
+	auto chunk = getChunkContainingBlock(pos);
+
+	if (!chunk) {
+		return nullptr;
+	}
+	else {
+		auto block = chunk->indexAbsolute(pos);
+		return block;
+	}
 }
 
 Chunk* World::getChunk(const int& x, const int& z)
@@ -442,6 +469,65 @@ Chunk* World::getChunk(const int& x, const int& z)
 	else {
 		return nullptr;
 	}
+}
+
+//TODO: this is unusuably slow
+bool World::isBlockAdjacentToAir(BlockPosition pos)
+{
+
+	//must make sure we don't check outside chunk bounds
+
+	Block* block;
+
+	//check x adjacency
+	pos.x++;
+	block = getBlock(pos);
+	if ((block) && (block->type == BlockTypes::Air)) {
+		return true;
+	}
+	pos.x--;
+
+	pos.x--;
+	block = getBlock(pos);
+	if ((block) && (block->type == BlockTypes::Air)) {
+		return true;
+	}
+	pos.x++;
+
+	//check z adjacency
+	pos.z++;
+	block = getBlock(pos);
+	if ((block) && (block->type == BlockTypes::Air)) {
+		return true;
+	}
+	pos.z--;
+
+	pos.z--;
+	block = getBlock(pos);
+	if ((block) && (block->type == BlockTypes::Air)) {
+		return true;
+	}
+	pos.z++;
+
+	if (pos.y < (CHUNK_HEIGHT - 1)) {
+		pos.y++;
+		block = getBlock(pos);
+		if ((block) && (block->type == BlockTypes::Air)) {
+			return true;
+		}
+		pos.y--;
+	}
+
+	if (pos.y > 0) {
+		pos.y--;
+		block = getBlock(pos);
+		if ((block) && (block->type == BlockTypes::Air)) {
+			return true;
+		}
+		pos.y++;
+	}
+
+	return false;
 }
 
 bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos) {

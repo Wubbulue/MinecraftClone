@@ -292,7 +292,7 @@ void rotateAboutPoint(glm::mat4& mat, float rotationAmount, float xOffset, float
 
 int main()
 {
-	saver = std::make_shared<worldSaver>("C:/Programming_projects/Open-GL/saves/save.world", &player);
+	saver = std::make_shared<worldSaver>("../saves/save.world", &player);
 	chunkManager = std::make_unique<ChunkManager>(saver.get(), &player, &world);
 	chunkManager->initWorld();
 
@@ -356,16 +356,15 @@ int main()
 
 
 
-	Shader lineShader("C:/Programming_projects/Open-GL/shaders/vert_line.glsl", "C:/Programming_projects/Open-GL/shaders/frag_line.glsl");
+	Shader lineShader("../shaders/vert_line.glsl", "../shaders/frag_line.glsl","line shader");
 
 	//create a shader program from a vert and frag path
-	Shader shaderTexture("C:/Programming_projects/Open-GL/shaders/vert_texture.glsl", "C:/Programming_projects/Open-GL/shaders/frag_texture.glsl");
+	Shader shaderTexture("../shaders/vert_texture.glsl", "../shaders/frag_texture.glsl","texture shader");
 	shaderTexture.use();
 
-	Shader diffuseShader("C:/Programming_projects/Open-GL/shaders/vert_diffuse.glsl", "C:/Programming_projects/Open-GL/shaders/frag_diffuse.glsl");
+	Shader diffuseShader("../shaders/vert_diffuse.glsl", "../shaders/frag_diffuse.glsl", "diffuse shader");
 
-	unsigned int dirtTexture, stoneTexture;
-
+	unsigned int atlasTexture;
 	{
 		//--------------------------TEXTURES---------------------------------------------------
 
@@ -374,8 +373,8 @@ int main()
 		// -------------------------
 		// Dirt
 		// ---------
-		glGenTextures(1, &dirtTexture);
-		glBindTexture(GL_TEXTURE_2D, dirtTexture);
+		glGenTextures(1, &atlasTexture);
+		glBindTexture(GL_TEXTURE_2D, atlasTexture);
 
 		// set the texture wrapping parameters (after generating texture i think?)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
@@ -387,8 +386,8 @@ int main()
 		// load image, create texture and generate mipmaps
 		int width, height, nrChannels;
 		stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-		unsigned char* data = stbi_load("C:/Programming_projects/Open-GL/textures/grass_block_side.png", &width, &height, &nrChannels, 0);
-		//unsigned char* data = stbi_load("C:/Programming_projects/Open-GL/textures/dirt.jpg", &width, &height, &nrChannels, 0);
+		unsigned char* data = stbi_load("../textures/default_texture.png", &width, &height, &nrChannels, 0);
+		//unsigned char* data = stbi_load("D:/Programming/Minecraft-gl/Opengl2/textures/dirt.jpg", &width, &height, &nrChannels, 0);
 		if (data)
 		{
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -400,35 +399,6 @@ int main()
 		}
 		stbi_image_free(data);
 
-		// Stone
-		// ---------
-		glGenTextures(1, &stoneTexture);
-		glBindTexture(GL_TEXTURE_2D, stoneTexture);
-		// set the texture wrapping parameters
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		// set texture filtering parameters
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		// load image, create texture and generate mipmaps
-		data = stbi_load("C:/Programming_projects/Open-GL/textures/stone.jpg", &width, &height, &nrChannels, 0);
-		if (data)
-		{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-			glGenerateMipmap(GL_TEXTURE_2D);
-		}
-		else
-		{
-			std::cout << "Failed to load texture" << std::endl;
-		}
-		stbi_image_free(data);
-
-		// tell opengl for each sampler to which texture unit it belongs to (only has to be done once)
-		// -------------------------------------------------------------------------------------------
-		shaderTexture.use(); // don't forget to activate/use the shader before setting uniforms!
-
-		// either set it manually like so:
-		shaderTexture.setInt("texture", 0);
 		//-------------------------------------------------------------------------------------------
 	}
 
@@ -444,60 +414,17 @@ int main()
 
 	};
 
-	float vertices[] = {
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-	 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-	};
-
 	//TODO: use classes for these
-	unsigned int VBO, VAO, lineVAO, lineVBO;
-	glGenVertexArrays(1, &VAO); // we can also generate multiple VAOs or buffers at the same time
-	glGenBuffers(1, &VBO);
+	unsigned int cubeVBO,dirtVBO,stoneVBO, dirtVAO, stoneVAO, lineVAO, lineVBO;
+	glGenVertexArrays(1, &dirtVAO); // we can also generate multiple VAOs or buffers at the same time
+	glGenVertexArrays(1, &stoneVAO); // we can also generate multiple VAOs or buffers at the same time
+	glGenBuffers(1, &cubeVBO);
+	glGenBuffers(1,&dirtVBO);
+	glGenBuffers(1,&stoneVBO);
 
 	glGenVertexArrays(1, &lineVAO); // we can also generate multiple VAOs or buffers at the same time
 	glGenBuffers(1, &lineVBO);
-
-
-
+	
 
 	// first line setup
 	// --------------------
@@ -509,18 +436,46 @@ int main()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	// first triangle setup
-	// --------------------
-	glBindVertexArray(VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	//--------------------------------------------------------------------------
+
+	//TODO: probably there is a cleaner way to do this
+
+	//--------------------------dirt-------------------------------------
+	glBindVertexArray(dirtVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
 
 	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 	// texture coord attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, dirtVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(dirtFaces), dirtFaces, GL_STATIC_DRAW);
+
+	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  0, (void*)(0));
+	glEnableVertexAttribArray(2);
+	//--------------------------dirt-------------------------------------
+
+	//--------------------------stone-------------------------------------
+	glBindVertexArray(stoneVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+
+	// position attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	// texture coord attribute
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, stoneVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(stoneFaces), stoneFaces, GL_STATIC_DRAW);
+
+	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  0, (void*)(0));
+	glEnableVertexAttribArray(2);
+	//--------------------------stone-------------------------------------
 
 
 	//COORDINATE TRANSFORMATIONS
@@ -529,11 +484,7 @@ int main()
 	glm::mat4 projection = glm::mat4(1.0f);
 
 
-
 	TextWriter fontWriter;
-
-	//chunk.empty();
-	//chunk.populateBlocks();
 
 
 	// render loop
@@ -567,9 +518,7 @@ int main()
 
 		// bind textures on corresponding texture units
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, dirtTexture);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, stoneTexture);
+		glBindTexture(GL_TEXTURE_2D, atlasTexture);
 
 
 
@@ -590,7 +539,7 @@ int main()
 		shaderTexture.setMat4("projection", projection);
 
 
-		glBindVertexArray(VAO);
+		glBindVertexArray(dirtVAO);
 
 
 		int blocksCulled = 0;
@@ -606,10 +555,11 @@ int main()
 				for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 					for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
-
+						BlockPosition pos{x,y,z};
 
 						auto blockType = chunk.blocks[index(x, z, y)].type;
-						if (blockType == BlockTypes::Air || !chunk.isBlockAdjacentToAir(x, y, z)) {
+						//if (blockType == BlockTypes::Air || !world.isBlockAdjacentToAir(pos)) {
+						if (blockType == BlockTypes::Air || !chunk.isBlockAdjacentToAir(x,y,z)) {
 							continue;
 						}
 
@@ -650,10 +600,10 @@ int main()
 						shaderTexture.setMat4("model", model);
 
 						if (blockType == BlockTypes::Dirt) {
-							shaderTexture.setInt("texture", 0);
+							glBindVertexArray(dirtVAO);
 						}
 						else if (blockType == BlockTypes::Stone) {
-							shaderTexture.setInt("texture", 1);
+							glBindVertexArray(stoneVAO);
 						}
 
 						glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -699,6 +649,18 @@ int main()
 			fontWriter.RenderText(posString, 25.0f, SCR_HEIGHT - 150, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
 			std::string culledString = "Blocks culled: " + std::to_string(blocksCulled);
 			fontWriter.RenderText(culledString, 25.0f, SCR_HEIGHT - 200, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+
+			std::string blockString;
+			if (player.isLookingAtBlock) {
+				auto b = player.blockLookingAt;
+				std::string blockTypeString = blockTypeToString(world.getBlock(b)->type);
+				blockString = "Player is looking at: " + blockTypeString + ", in position " + std::to_string(b.x) + "," + std::to_string(b.y) + "," + std::to_string(b.z);
+			}
+			else {
+				blockString = "Player is not looking at block";
+			}
+			fontWriter.RenderText(blockString, 25.0f, SCR_HEIGHT - 250, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+
 		}
 
 
@@ -711,8 +673,11 @@ int main()
 
 	// optional: de-allocate all resources once they've outlived their purpose:
 	// ------------------------------------------------------------------------
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
+	glDeleteVertexArrays(1, &dirtVAO);
+	glDeleteVertexArrays(1, &stoneVAO);
+	glDeleteBuffers(1, &cubeVBO);
+	glDeleteBuffers(1, &dirtVBO);
+	glDeleteBuffers(1, &stoneVBO);
 
 	glDeleteVertexArrays(1, &lineVAO);
 	glDeleteBuffers(1, &lineVBO);

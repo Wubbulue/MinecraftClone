@@ -7,7 +7,7 @@ TextWriter::TextWriter() {
 		}
 
 		FT_Face face;
-		if (FT_New_Face(ft, "C:/Programming_projects/Open-GL/fonts/Roboto-Regular.ttf", 0, &face))
+		if (FT_New_Face(ft, "../fonts/Roboto-Regular.ttf", 0, &face))
 		{
 			std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
 		}

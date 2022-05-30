@@ -4,8 +4,6 @@ set (CMAKE_CXX_STANDARD 17)
 #find_package(OpenGL REQUIRED)
 
  
-find_package(OpenCV REQUIRED )
-INCLUDE_DIRECTORIES( ${OpenCV_INCLUDE_DIRS} )
 
 set (ThirdParty ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty)
 
@@ -24,6 +22,6 @@ font.h font.cpp Colors.h save.h save.cpp)
 include_directories(${ThirdParty}/include ${CMAKE_CURRENT_SOURCE_DIR}/glm)
 
 
-TARGET_LINK_LIBRARIES (GL_Practice PUBLIC ${ThirdParty}/lib/glfw/glfw3.lib ${ThirdParty}/lib/freetype/freetype.lib glad ${OpenCV_LIBS})         
+TARGET_LINK_LIBRARIES (GL_Practice PUBLIC ${ThirdParty}/lib/glfw/glfw3.lib ${ThirdParty}/lib/freetype/freetype.lib glad)         
 
 
