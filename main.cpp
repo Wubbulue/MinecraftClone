@@ -542,74 +542,87 @@ int main()
 		glBindVertexArray(dirtVAO);
 
 
+		auto toRender = world.getBlocksToRender(player.chunkX, player.chunkZ);
 		int blocksCulled = 0;
 		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
-		//TODO: implement proper instancing
-		for (auto& [key, chunk] : world.chunks)
-		{
 
-			float offsetX = chunk.x * CHUNK_LENGTH;
-			float offsetZ = chunk.z * CHUNK_LENGTH;
-			for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 
-				for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-					for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+		int chunkNum = 0,numChunkX=0,numChunkZ=0;
+		for (int i = player.chunkX - world.renderDistance; i < player.chunkX + world.renderDistance+1; i++) {
 
-						BlockPosition pos{x,y,z};
+			numChunkZ = 0;
+			for (int j = player.chunkZ - world.renderDistance; j < player.chunkZ + world.renderDistance+1; j++) {
 
-						auto blockType = chunk.blocks[index(x, z, y)].type;
-						//if (blockType == BlockTypes::Air || !world.isBlockAdjacentToAir(pos)) {
-						if (blockType == BlockTypes::Air || !chunk.isBlockAdjacentToAir(x,y,z)) {
-							continue;
-						}
 
-						if (shouldFrustumCull) {
+				float offsetX = i * CHUNK_LENGTH;
+				float offsetZ = j * CHUNK_LENGTH;
 
-							auto block = chunk.blocks + index(x, z, y);
-							glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
+				for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 
-							SquareAABB square(center, 0.5f);
-							bool isOnFurstum = square.isOnFrustum(camFrustum);
+					for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+						for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
-							if (!isOnFurstum) {
-								blocksCulled++;
+							auto blockType = toRender[world.customIndex(x+(numChunkX*CHUNK_LENGTH),z+(numChunkZ*CHUNK_LENGTH),y)].type;
+							//if (blockType == BlockTypes::Air || !world.isBlockAdjacentToAir(pos)) {
+							if (blockType == BlockTypes::Air) {
 								continue;
 							}
 
-						}
+							if (shouldFrustumCull) {
 
-						model = glm::mat4(1.0f);
+								glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
 
+								SquareAABB square(center, 0.5f);
+								bool isOnFurstum = square.isOnFrustum(camFrustum);
 
-						//offset by half voxel for center
-						model = glm::translate(model, glm::vec3(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ));
+								if (!isOnFurstum) {
+									blocksCulled++;
+									continue;
+								}
 
-						if (player.isLookingAtBlock) {
-							auto p = player.blockLookingAt;
-							p.x -= chunk.x * CHUNK_LENGTH;
-							p.z -= chunk.z * CHUNK_LENGTH;
-							if ((p.x == x) && (p.y == y) && (p.z == z)) {
-								diffuseShader.use();
-								diffuseShader.setMat4("model", model);
-								glDrawArrays(GL_TRIANGLES, 0, 36);
-								shaderTexture.use();
-								continue;
 							}
-						}
 
-						shaderTexture.setMat4("model", model);
+							model = glm::mat4(1.0f);
 
-						if (blockType == BlockTypes::Dirt) {
-							glBindVertexArray(dirtVAO);
-						}
-						else if (blockType == BlockTypes::Stone) {
-							glBindVertexArray(stoneVAO);
-						}
 
-						glDrawArrays(GL_TRIANGLES, 0, 36);
+							//offset by half voxel for center
+							model = glm::translate(model, glm::vec3(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ));
+
+							if (player.isLookingAtBlock) {
+								auto p = player.blockLookingAt;
+								p.x -= i * CHUNK_LENGTH;
+								p.z -= j * CHUNK_LENGTH;
+								if ((p.x == x) && (p.y == y) && (p.z == z)) {
+									diffuseShader.use();
+									diffuseShader.setMat4("model", model);
+									glDrawArrays(GL_TRIANGLES, 0, 36);
+									shaderTexture.use();
+									continue;
+								}
+							}
+
+							shaderTexture.setMat4("model", model);
+
+							if (blockType== BlockTypes::Dirt) {
+								glBindVertexArray(dirtVAO);
+							}
+							else if (blockType == BlockTypes::Stone) {
+								glBindVertexArray(stoneVAO);
+							}
+
+							glDrawArrays(GL_TRIANGLES, 0, 36);
+
+
+						}
 					}
 				}
+				chunkNum++;
+				numChunkZ++;
+
 			}
+
+			numChunkX++;
+
 		}
 
 

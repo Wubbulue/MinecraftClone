@@ -17,7 +17,6 @@ typedef float precision;
 const int cameraDataOffset = sizeof(precision) * 5;
 
 //data offset for one chunk
-const int chunkDataOffset = CHUNK_HEIGHT * CHUNK_LENGTH * CHUNK_LENGTH * sizeof(Block);
 
 //World file format:
 /*

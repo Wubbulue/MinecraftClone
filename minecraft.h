@@ -106,6 +106,8 @@ struct Block {
 	BlockType type = BlockTypes::Air;
 };
 
+const int chunkDataOffset = CHUNK_HEIGHT * CHUNK_LENGTH * CHUNK_LENGTH * sizeof(Block);
+
 struct BlockPosition {
 	int x, y, z;
 
@@ -212,6 +214,10 @@ public:
 
 	bool isBlockAdjacentToAir(BlockPosition pos);
 
+	int customIndex(int x, int z, int y);
+
+	std::vector<Block> getBlocksToRender(int chunkX,int chunkZ);
+
 	~World() {
 		for (auto& [key, chunk] : chunks)
 		{
@@ -220,7 +226,8 @@ public:
 	}
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
-	uint16_t renderDistance = 3;
+	const uint16_t renderDistance = 3;
+	const int worldLength = CHUNK_LENGTH * (2 * renderDistance + 1);
 	void addChunk(int x, int z);
 
 	//this function mashes our two 4 byte integers into a single 8 byte output
