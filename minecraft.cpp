@@ -538,8 +538,6 @@ int World::customIndex(int x, int z, int y)
 //this function assumes that we have a sqaure of chunks loaded in
 std::vector<Block> World::getBlocksToRender(int chunkX,int chunkZ)
 {
-	std::vector<Block> tempBlocks(CHUNK_HEIGHT*CHUNK_LENGTH*CHUNK_LENGTH*(pow(renderDistance*2+1,2)));
-
 
 	int chunkNum = 0,numChunkX=0,numChunkZ=0;
 

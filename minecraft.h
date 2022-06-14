@@ -181,7 +181,10 @@ public:
 
 	World(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
 		perlin = siv::PerlinNoise(seed);
-		
+
+		//set it to size of blocks around player
+		tempBlocks.resize(CHUNK_HEIGHT*CHUNK_LENGTH*CHUNK_LENGTH*(pow(renderDistance*2+1,2)));
+
 	}
 
 	//will only currently work for rays cast inside world bounds 
@@ -224,6 +227,9 @@ public:
 			delete[] chunk.blocks;
 		}
 	}
+
+	//this is a vector of all blocks around the player which is updated by the getBlocksToRender function to save it from being allocated every frame
+	std::vector<Block> tempBlocks;
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
 	const uint16_t renderDistance = 3;
