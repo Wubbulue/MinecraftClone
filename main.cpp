@@ -554,9 +554,11 @@ int main()
 
 		std::vector<Block> toRender;
 		if (useThreadedRender) {
+			Timer toGet("To get threaded");
 			toRender = world.getBlocksToRenderThreaded(player.chunkX, player.chunkZ);
 		}
 		else {
+			Timer toGet("To get not threaded");
 			toRender = world.getBlocksToRender(player.chunkX, player.chunkZ);
 		}
 

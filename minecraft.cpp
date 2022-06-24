@@ -704,72 +704,62 @@ std::vector<Block> World::getBlocksToRenderThreaded(int chunkX, int chunkZ)
 
 
 
-	{
-	std::string name = "enqueing";
-	Timer timer(name);
 	for (int i = chunkX - renderDistance; i < chunkX + renderDistance+1; i++) {
 
 		numChunkZ = 0;
-		for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance+1; j++) {
-			for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+		for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
 
-				//pool.enqueue([&]{
-				//	printf("nothing");
-				//});
-				//auto result = pool.enqueue([] { printf("test");});
+			futures.emplace_back(pool.enqueue([chunkNum, this, numChunkX, numChunkZ, minX, minZ, maxX, maxZ, i, j, &blocks] {
+				for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+					for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+						for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
-				futures.emplace_back(pool.enqueue([chunkNum,this,numChunkX,numChunkZ,minX,minZ,maxX,maxZ,i,j,&blocks]{
-					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
-						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+							int offset = chunkNum * chunkDataOffset;
+							int blockX = x + numChunkX * CHUNK_LENGTH;
+							int blockZ = z + numChunkZ * CHUNK_LENGTH;
+							int index = customIndex(blockX, blockZ, y);
 
-								int offset = chunkNum * chunkDataOffset;
-								int blockX = x + numChunkX * CHUNK_LENGTH;
-								int blockZ = z + numChunkZ * CHUNK_LENGTH;
-								int index = customIndex(blockX, blockZ, y);
+							int absX = x + (i * CHUNK_LENGTH);
+							int absZ = z + (j * CHUNK_LENGTH);
 
-								int absX = x + (i * CHUNK_LENGTH);
-								int absZ = z + (j * CHUNK_LENGTH);
-
-								if (tempBlocks[index].type == BlockTypes::Air) {
-									//blocks[posInArray].type = BlockTypes::Air; // probably don't need this line
-									continue;
-								}
-
-
-
-								if ((absX > minX) && (tempBlocks[customIndex(blockX - 1, blockZ, y)].type == BlockTypes::Air)) {
-									continue;
-								}
-								if ((absX < maxX) && (tempBlocks[customIndex(blockX + 1, blockZ, y)].type == BlockTypes::Air)) {
-									continue;
-								}
-
-								//check z adjacency
-								if ((absZ > minZ) && (tempBlocks[customIndex(blockX, blockZ - 1, y)].type == BlockTypes::Air)) {
-									continue;
-								}
-								if ((absZ < maxZ) && (tempBlocks[customIndex(blockX, blockZ + 1, y)].type == BlockTypes::Air)) {
-									continue;
-								}
-
-								//check y adjacency
-								if ((y > 0) && (tempBlocks[customIndex(blockX, blockZ, y - 1)].type == BlockTypes::Air)) {
-									continue;
-								}
-
-								if ((y < (CHUNK_HEIGHT - 1)) && (tempBlocks[customIndex(blockX, blockZ, y + 1)].type == BlockTypes::Air)) {
-									continue;
-								}
-
-								blocks[index].type = BlockTypes::Air;
-
+							if (tempBlocks[index].type == BlockTypes::Air) {
+								//blocks[posInArray].type = BlockTypes::Air; // probably don't need this line
+								continue;
 							}
+
+
+
+							if ((absX > minX) && (tempBlocks[customIndex(blockX - 1, blockZ, y)].type == BlockTypes::Air)) {
+								continue;
+							}
+							if ((absX < maxX) && (tempBlocks[customIndex(blockX + 1, blockZ, y)].type == BlockTypes::Air)) {
+								continue;
+							}
+
+							//check z adjacency
+							if ((absZ > minZ) && (tempBlocks[customIndex(blockX, blockZ - 1, y)].type == BlockTypes::Air)) {
+								continue;
+							}
+							if ((absZ < maxZ) && (tempBlocks[customIndex(blockX, blockZ + 1, y)].type == BlockTypes::Air)) {
+								continue;
+							}
+
+							//check y adjacency
+							if ((y > 0) && (tempBlocks[customIndex(blockX, blockZ, y - 1)].type == BlockTypes::Air)) {
+								continue;
+							}
+
+							if ((y < (CHUNK_HEIGHT - 1)) && (tempBlocks[customIndex(blockX, blockZ, y + 1)].type == BlockTypes::Air)) {
+								continue;
+							}
+
+							blocks[index].type = BlockTypes::Air;
+
 						}
 					}
+				}
 				}));
 
-			}
 
 			chunkNum++;
 
@@ -777,7 +767,6 @@ std::vector<Block> World::getBlocksToRenderThreaded(int chunkX, int chunkZ)
 		}
 
 		numChunkX++;
-	}
 	}
 
 	for (const auto& f : futures) {

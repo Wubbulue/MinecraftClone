@@ -10,7 +10,7 @@ void Timer::Stop()
 
 	double ms = duration * 0.001;
 
-	printf("%s took %f miliseconds\n", name, ms);
+	printf("%s took %f miliseconds\n", name.c_str(), ms);
 	
 
 }
