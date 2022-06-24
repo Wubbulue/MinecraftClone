@@ -152,7 +152,7 @@ Block* Chunk::indexAbsolute(BlockPosition pos) {
 	bool inYRange = (pos.y < CHUNK_HEIGHT) && (pos.y >= 0);
 	assert(inXRange && inYRange && inZRange);
 
-	return blocks + index(pos.x, pos.z, pos.y);
+	return blocks.data() + index(pos.x, pos.z, pos.y);
 }
 
 
@@ -646,6 +646,147 @@ std::vector<Block> World::getBlocksToRender(int chunkX,int chunkZ)
 	}
 
 	return blocks;
+}
+
+std::vector<Block> World::getBlocksToRenderThreaded(int chunkX, int chunkZ)
+{
+
+
+	int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
+
+	for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
+
+		numChunkZ = 0;
+		for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
+			auto chunk = getChunk(i, j);
+			assert(chunk);
+
+			for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+
+				for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+					for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+						int largeIndex = customIndex(x + (CHUNK_LENGTH * numChunkX), z + (CHUNK_LENGTH * numChunkZ), y);
+						int index = index(x, z, y);
+						tempBlocks[largeIndex] = chunk->blocks[index];
+
+					}
+				}
+			}
+			chunkNum++;
+
+			numChunkZ++;
+		}
+
+		numChunkX++;
+
+	}
+
+
+	std::vector<Block> blocks = tempBlocks; // copy data into old one
+
+	int originX = chunkX * CHUNK_LENGTH;
+	int originZ = chunkZ * CHUNK_LENGTH;
+
+	int minX = originX - (CHUNK_LENGTH * renderDistance);
+	int minZ = originZ - (CHUNK_LENGTH * renderDistance);
+
+	int maxX = originX + (CHUNK_LENGTH * renderDistance) - 1;
+	int maxZ = originZ + (CHUNK_LENGTH * renderDistance) - 1;
+
+	chunkNum = 0;
+	numChunkX = 0;
+	numChunkZ = 0;
+
+
+	int currentThreadNum = 0;
+	std::vector<std::future<void>> futures;
+	ThreadPool& pool = ThreadPool::shared_instance();
+
+
+
+	{
+	std::string name = "enqueing";
+	Timer timer(name);
+	for (int i = chunkX - renderDistance; i < chunkX + renderDistance+1; i++) {
+
+		numChunkZ = 0;
+		for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance+1; j++) {
+			for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+
+				//pool.enqueue([&]{
+				//	printf("nothing");
+				//});
+				//auto result = pool.enqueue([] { printf("test");});
+
+				futures.emplace_back(pool.enqueue([chunkNum,this,numChunkX,numChunkZ,minX,minZ,maxX,maxZ,i,j,&blocks]{
+					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+
+								int offset = chunkNum * chunkDataOffset;
+								int blockX = x + numChunkX * CHUNK_LENGTH;
+								int blockZ = z + numChunkZ * CHUNK_LENGTH;
+								int index = customIndex(blockX, blockZ, y);
+
+								int absX = x + (i * CHUNK_LENGTH);
+								int absZ = z + (j * CHUNK_LENGTH);
+
+								if (tempBlocks[index].type == BlockTypes::Air) {
+									//blocks[posInArray].type = BlockTypes::Air; // probably don't need this line
+									continue;
+								}
+
+
+
+								if ((absX > minX) && (tempBlocks[customIndex(blockX - 1, blockZ, y)].type == BlockTypes::Air)) {
+									continue;
+								}
+								if ((absX < maxX) && (tempBlocks[customIndex(blockX + 1, blockZ, y)].type == BlockTypes::Air)) {
+									continue;
+								}
+
+								//check z adjacency
+								if ((absZ > minZ) && (tempBlocks[customIndex(blockX, blockZ - 1, y)].type == BlockTypes::Air)) {
+									continue;
+								}
+								if ((absZ < maxZ) && (tempBlocks[customIndex(blockX, blockZ + 1, y)].type == BlockTypes::Air)) {
+									continue;
+								}
+
+								//check y adjacency
+								if ((y > 0) && (tempBlocks[customIndex(blockX, blockZ, y - 1)].type == BlockTypes::Air)) {
+									continue;
+								}
+
+								if ((y < (CHUNK_HEIGHT - 1)) && (tempBlocks[customIndex(blockX, blockZ, y + 1)].type == BlockTypes::Air)) {
+									continue;
+								}
+
+								blocks[index].type = BlockTypes::Air;
+
+							}
+						}
+					}
+				}));
+
+			}
+
+			chunkNum++;
+
+			numChunkZ++;
+		}
+
+		numChunkX++;
+	}
+	}
+
+	for (const auto& f : futures) {
+		f.wait();
+	}
+
+
+	return blocks;
+
 }
 
 bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos) {

@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <array>
 #include <iostream>
+#include "Timer.h"
+#include "ThreadPool.h"
 
 const int CHUNK_HEIGHT = 64;
 const int CHUNK_LENGTH = 16;
@@ -130,21 +132,17 @@ public:
 
 
 
-	//x,z,y
-	//Block blocks[CHUNK_LENGTH][CHUNK_LENGTH][CHUNK_HEIGHT];
-	Block* blocks = new Block[CHUNK_LENGTH*CHUNK_LENGTH*CHUNK_HEIGHT];
+	//this will copy heap memory every time
+	//TODO: make this better
+	std::vector<Block> blocks;
 
 	//this function returns a block given a block position that is global
 	Block* indexAbsolute(BlockPosition pos);
-	
+
 	Chunk(int inX,int inZ) : x(inX), z(inZ) {
+		blocks.resize(CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_HEIGHT);
 	}
 
-	//will be deleted when world is????
-	//~Chunk()
-	//{
-	//	delete[] blocks;
-	//}
 
 
 	//empties chunk
@@ -221,18 +219,20 @@ public:
 
 	std::vector<Block> getBlocksToRender(int chunkX,int chunkZ);
 
+	std::vector<Block> getBlocksToRenderThreaded(int chunkX,int chunkZ);
+
 	~World() {
-		for (auto& [key, chunk] : chunks)
-		{
-			delete[] chunk.blocks;
-		}
+		//for (auto& [key, chunk] : chunks)
+		//{
+		//	delete[] chunk.blocks;
+		//}
 	}
 
 	//this is a vector of all blocks around the player which is updated by the getBlocksToRender function to save it from being allocated every frame
 	std::vector<Block> tempBlocks;
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
-	const uint16_t renderDistance = 3;
+	const uint16_t renderDistance = 6;
 	const int worldLength = CHUNK_LENGTH * (2 * renderDistance + 1);
 	void addChunk(int x, int z);
 

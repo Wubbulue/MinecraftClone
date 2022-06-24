@@ -16,6 +16,8 @@
 #include "font.h"
 #include "Colors.h"
 #include "save.h"
+#include "Timer.h"
+#include "ThreadPool.h"
 
 
 
@@ -39,6 +41,7 @@ const float mouseSensitivity = 0.1f;
 bool renderDebugInfo = true;
 bool shouldFrustumCull = true;
 bool frustumCullUsingCube = true;
+bool useThreadedRender = true;
 
 
 Player player;
@@ -233,7 +236,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_C && action == GLFW_PRESS) //Clear lines
 	{
-		world.addChunk(1, 0);
+		useThreadedRender = !useThreadedRender;
 
 	}
 	else if (key == GLFW_KEY_F3 && action == GLFW_PRESS) //Render debug info
@@ -292,6 +295,8 @@ void rotateAboutPoint(glm::mat4& mat, float rotationAmount, float xOffset, float
 
 int main()
 {
+
+
 	saver = std::make_shared<worldSaver>("../saves/save.world", &player);
 	chunkManager = std::make_unique<ChunkManager>(saver.get(), &player, &world);
 	chunkManager->initWorld();
@@ -542,12 +547,26 @@ int main()
 		glBindVertexArray(dirtVAO);
 
 
-		auto toRender = world.getBlocksToRender(player.chunkX, player.chunkZ);
+		
+		//ThreadPool& pool = ThreadPool::shared_instance();
+		// create thread pool with 4 worker threads
+		//auto result = pool.enqueue([]{ printf("test");});
+
+		std::vector<Block> toRender;
+		if (useThreadedRender) {
+			toRender = world.getBlocksToRenderThreaded(player.chunkX, player.chunkZ);
+		}
+		else {
+			toRender = world.getBlocksToRender(player.chunkX, player.chunkZ);
+		}
+
 		int blocksCulled = 0;
 		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
 
 
 		int chunkNum = 0,numChunkX=0,numChunkZ=0;
+		{
+
 		for (int i = player.chunkX - world.renderDistance; i < player.chunkX + world.renderDistance+1; i++) {
 
 			numChunkZ = 0;
@@ -624,6 +643,8 @@ int main()
 			numChunkX++;
 
 		}
+		}
+
 
 
 

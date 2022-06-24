@@ -78,7 +78,7 @@ bool worldSaver::tryFillChunk(Chunk* chunk) {
 	//we found chunk, fill it and return true
 	if (it != chunkList.end()) {
 		file.seekg(cameraDataOffset+sizeof(uint32_t) + chunkList.size() * sizeof(int64_t) + chunkDataOffset * pos);
-		file.read((char*)chunk->blocks, chunkDataOffset);
+		file.read((char*)chunk->blocks.data(), chunkDataOffset);
 		return true;
 	}
 	//couldn't find chunk in our world file
@@ -97,7 +97,7 @@ void worldSaver::writeChunk(const Chunk &chunk) {
 	if (it != chunkList.end()) {
 		//we found our chunk, go to it and write the new one
 		file.seekp(cameraDataOffset+sizeof(uint32_t) + chunkList.size() * sizeof(int64_t) + chunkDataOffset * pos);
-		file.write((char*)chunk.blocks, chunkDataOffset);
+		file.write((char*)chunk.blocks.data(), chunkDataOffset);
 		return;
 	}
 	else {
@@ -124,7 +124,7 @@ void worldSaver::writeChunk(const Chunk &chunk) {
 
 		//write chunk itself to end of file
 		file.seekp(0,std::ios::end);
-		file.write((char*)chunk.blocks, chunkDataOffset);
+		file.write((char*)chunk.blocks.data(), chunkDataOffset);
 
 		return;
 
