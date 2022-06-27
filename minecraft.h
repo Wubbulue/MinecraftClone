@@ -182,6 +182,7 @@ public:
 
 		//set it to size of blocks around player
 		tempBlocks.resize(CHUNK_HEIGHT*CHUNK_LENGTH*CHUNK_LENGTH*(pow(renderDistance*2+1,2)));
+		blocksToRender.resize(tempBlocks.size());
 
 	}
 
@@ -197,6 +198,10 @@ public:
 	static BlockPosition findBlock(const glm::vec3 &position);
 	
 	static void findChunk(const glm::vec3 &position, int *chunkX,int *chunkZ);
+
+	void removeBlock(const BlockPosition& pos);
+
+	
 
 
 	//gets chunk from block coords
@@ -217,19 +222,24 @@ public:
 
 	int customIndex(int x, int z, int y);
 
-	std::vector<Block> getBlocksToRender(int chunkX,int chunkZ);
 
-	std::vector<Block> getBlocksToRenderThreaded(int chunkX,int chunkZ);
+	void getBlocksToRenderThreaded(int chunkX,int chunkZ);
 
-	~World() {
+	//~World() {
 		//for (auto& [key, chunk] : chunks)
 		//{
 		//	delete[] chunk.blocks;
 		//}
-	}
+	//}
 
 	//this is a vector of all blocks around the player which is updated by the getBlocksToRender function to save it from being allocated every frame
 	std::vector<Block> tempBlocks;
+
+	//these are the blocks that should be rendered on each frame
+	std::vector<Block> blocksToRender;
+
+	bool renderBlocksDirty = true;
+	
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
 	const uint16_t renderDistance = 3;

@@ -41,7 +41,6 @@ const float mouseSensitivity = 0.1f;
 bool renderDebugInfo = true;
 bool shouldFrustumCull = true;
 bool frustumCullUsingCube = true;
-bool useThreadedRender = true;
 
 
 Player player;
@@ -233,11 +232,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	else if (key == GLFW_KEY_P && action == GLFW_PRESS) //Print position
 	{
 		printf("Position:%f,%f,%f \n", player.cam.position.x, player.cam.position.y, player.cam.position.z);
-	}
-	else if (key == GLFW_KEY_C && action == GLFW_PRESS) //Clear lines
-	{
-		useThreadedRender = !useThreadedRender;
-
 	}
 	else if (key == GLFW_KEY_F3 && action == GLFW_PRESS) //Render debug info
 	{
@@ -548,19 +542,11 @@ int main()
 
 
 		
+		world.getBlocksToRenderThreaded(player.chunkX,player.chunkZ);
 		//ThreadPool& pool = ThreadPool::shared_instance();
 		// create thread pool with 4 worker threads
 		//auto result = pool.enqueue([]{ printf("test");});
 
-		std::vector<Block> toRender;
-		if (useThreadedRender) {
-			Timer toGet("To get threaded");
-			toRender = world.getBlocksToRenderThreaded(player.chunkX, player.chunkZ);
-		}
-		else {
-			Timer toGet("To get not threaded");
-			toRender = world.getBlocksToRender(player.chunkX, player.chunkZ);
-		}
 
 		int blocksCulled = 0;
 		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
@@ -583,7 +569,7 @@ int main()
 					for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 						for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
-							auto blockType = toRender[world.customIndex(x+(numChunkX*CHUNK_LENGTH),z+(numChunkZ*CHUNK_LENGTH),y)].type;
+							auto blockType = world.blocksToRender[world.customIndex(x+(numChunkX*CHUNK_LENGTH),z+(numChunkZ*CHUNK_LENGTH),y)].type;
 							//if (blockType == BlockTypes::Air || !world.isBlockAdjacentToAir(pos)) {
 							if (blockType == BlockTypes::Air) {
 								continue;

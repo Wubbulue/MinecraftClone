@@ -210,6 +210,7 @@ void ChunkManager::loadChunk(const int& chunkX, const int& chunkZ)
 			saver->writeChunk(chunk);
 		}
 		world->chunks.insert(std::pair<int64_t,Chunk>(hash,chunk));
+		world->renderBlocksDirty = true;
 	}
 
 }
@@ -220,12 +221,14 @@ void ChunkManager::unloadChunk(const int& chunkX, const int& chunkZ)
 
 	auto hash = World::genHash(chunkX, chunkZ);
 	world->chunks.erase(hash);
+	world->renderBlocksDirty = true;
 
 }
 
 void ChunkManager::unloadChunk(const int64_t& hash)
 {
 	world->chunks.erase(hash);
+	world->renderBlocksDirty = true;
 }
 
 
