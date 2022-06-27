@@ -242,7 +242,7 @@ public:
 	
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
-	const uint16_t renderDistance = 3;
+	const uint16_t renderDistance = 6;
 	const int worldLength = CHUNK_LENGTH * (2 * renderDistance + 1);
 	void addChunk(int x, int z);
 

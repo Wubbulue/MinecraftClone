@@ -592,7 +592,6 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ)
 	numChunkZ = 0;
 
 
-	int currentThreadNum = 0;
 	std::vector<std::future<void>> futures;
 	ThreadPool& pool = ThreadPool::shared_instance();
 

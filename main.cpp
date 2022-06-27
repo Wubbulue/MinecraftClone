@@ -543,9 +543,11 @@ int main()
 
 		
 		world.getBlocksToRenderThreaded(player.chunkX,player.chunkZ);
-		//ThreadPool& pool = ThreadPool::shared_instance();
-		// create thread pool with 4 worker threads
-		//auto result = pool.enqueue([]{ printf("test");});
+
+		ThreadPool& pool = ThreadPool::shared_instance();
+		std::vector<Block> cullBlocks = world.blocksToRender;
+		std::vector<std::future<void>> futures;
+
 
 
 		int blocksCulled = 0;
@@ -553,7 +555,6 @@ int main()
 
 
 		int chunkNum = 0,numChunkX=0,numChunkZ=0;
-		{
 
 		for (int i = player.chunkX - world.renderDistance; i < player.chunkX + world.renderDistance+1; i++) {
 
@@ -564,33 +565,77 @@ int main()
 				float offsetX = i * CHUNK_LENGTH;
 				float offsetZ = j * CHUNK_LENGTH;
 
+
+				futures.emplace_back(pool.enqueue([chunkNum, numChunkX, numChunkZ, offsetX,offsetZ,camFrustum,&blocksCulled, i, j,&cullBlocks] {
+					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+
+						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+
+
+								auto block = cullBlocks.data() + world.customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
+								if (block->type == BlockTypes::Air) {
+									continue;
+								}
+
+								if (shouldFrustumCull) {
+
+									glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
+
+									SquareAABB square(center, 0.5f);
+									bool isOnFurstum = square.isOnFrustum(camFrustum);
+
+									if (!isOnFurstum) {
+										blocksCulled++;
+										block->type = BlockTypes::Air;
+										continue;
+									}
+
+								}
+							}
+						}
+					}
+				}));
+
+				chunkNum++;
+				numChunkZ++;
+
+			}
+
+			numChunkX++;
+
+		}
+
+		for (const auto& f : futures) {
+			f.wait();
+		}
+
+
+		chunkNum = 0,numChunkX=0,numChunkZ=0;
+
+		for (int i = player.chunkX - world.renderDistance; i < player.chunkX + world.renderDistance+1; i++) {
+
+			numChunkZ = 0;
+			for (int j = player.chunkZ - world.renderDistance; j < player.chunkZ + world.renderDistance + 1; j++) {
+
+
+				float offsetX = i * CHUNK_LENGTH;
+				float offsetZ = j * CHUNK_LENGTH;
+
+
+
 				for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 
 					for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 						for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
-							auto blockType = world.blocksToRender[world.customIndex(x+(numChunkX*CHUNK_LENGTH),z+(numChunkZ*CHUNK_LENGTH),y)].type;
-							//if (blockType == BlockTypes::Air || !world.isBlockAdjacentToAir(pos)) {
+							auto blockType = cullBlocks[world.customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y)].type;
+
 							if (blockType == BlockTypes::Air) {
 								continue;
 							}
 
-							if (shouldFrustumCull) {
-
-								glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
-
-								SquareAABB square(center, 0.5f);
-								bool isOnFurstum = square.isOnFrustum(camFrustum);
-
-								if (!isOnFurstum) {
-									blocksCulled++;
-									continue;
-								}
-
-							}
-
 							model = glm::mat4(1.0f);
-
 
 							//offset by half voxel for center
 							model = glm::translate(model, glm::vec3(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ));
@@ -610,7 +655,7 @@ int main()
 
 							shaderTexture.setMat4("model", model);
 
-							if (blockType== BlockTypes::Dirt) {
+							if (blockType == BlockTypes::Dirt) {
 								glBindVertexArray(dirtVAO);
 							}
 							else if (blockType == BlockTypes::Stone) {
@@ -623,6 +668,7 @@ int main()
 						}
 					}
 				}
+
 				chunkNum++;
 				numChunkZ++;
 
@@ -631,7 +677,7 @@ int main()
 			numChunkX++;
 
 		}
-		}
+
 
 
 
