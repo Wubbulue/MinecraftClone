@@ -59,7 +59,7 @@ public:
 	void writeChunk(const Chunk &chunk);
 
 private:
-	//stores the cantor hash of chunks that we have made so far
+	//stores the hash of chunks that we have made so far
 	std::vector<int64_t> chunkList;
 	std::fstream file;
 };

@@ -218,6 +218,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_N && action == GLFW_PRESS) //regenerate chunks
 	{
 		world.regenerate();
+		world.renderBlocksDirty = true;
 	}
 	else if (key == GLFW_KEY_T && action == GLFW_PRESS) //toggle wireframes
 	{
