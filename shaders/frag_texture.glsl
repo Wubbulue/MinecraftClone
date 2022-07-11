@@ -6,6 +6,7 @@ in vec2 TexCoord;
 flat in uint faceType;
 
 uniform sampler2D textureUniform;
+uniform float lightLevel;
 
 vec2 shiftTexCoord(in uint index, in vec2 tex){
 	int xIndex = int(mod(index,16));
@@ -19,7 +20,7 @@ void main()
 {
 	vec2 finalTex;
 	finalTex = shiftTexCoord(faceType,TexCoord);
-	
-	FragColor = texture(textureUniform, finalTex);
+	vec4 preDarken = texture(textureUniform, finalTex);
+	FragColor = vec4(preDarken.r*lightLevel,preDarken.g*lightLevel,preDarken.b*lightLevel,preDarken.a);
 
 }

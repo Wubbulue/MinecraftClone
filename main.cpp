@@ -36,6 +36,7 @@ unsigned int SCR_HEIGHT = 1000;
 float mixAmount = 0.5f;
 float fov = 45.0f;
 float camHeight = 0.0f;
+float lightLevel = 1.0f;
 const float mouseSensitivity = 0.1f;
 
 bool renderDebugInfo = true;
@@ -59,6 +60,8 @@ std::vector<Line> blockLines;
 
 float cubeRadius;
 
+//need access to this shader on user input callback, thus put it here
+std::unique_ptr<Shader> shaderTexture;
 
 
 float outlineVerts[] = {
@@ -249,29 +252,21 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		}
 		//drawCamFrustum();
 	}
-	else if (key == GLFW_KEY_K && action == GLFW_PRESS) //Write chunk 0,0
+	else if (key == GLFW_KEY_EQUAL && action == GLFW_PRESS) //Write chunk 0,0
 	{
-
-		//auto r = world.renderDistance;
-		//for (int i = r; i >= -r; i--) {
-		//	for (int j = r; j >= -r; j--) {
-		//		Chunk* chunk = world.getChunk(i, j);
-		//		saver->writeChunk(*chunk);
-		//	}
-		//}
-
+		if (lightLevel <= 0.911f) {
+			lightLevel += 0.1f;
+			shaderTexture->use();
+			shaderTexture->setFloat("lightLevel", lightLevel);
+		}
 	}
-	else if (key == GLFW_KEY_L && action == GLFW_PRESS) //Load chunk 0,0
+	else if (key == GLFW_KEY_MINUS && action == GLFW_PRESS) //Load chunk 0,0
 	{
-
-		//auto r = world.renderDistance;
-		//for (int i = r; i >= -r; i--) {
-		//	for (int j = r; j >= -r; j--) {
-		//		Chunk* chunk = world.getChunk(i, j);
-		//		saver->tryFillChunk(chunk);
-		//	}
-		//}
-
+		if (lightLevel >= 0.099f) {
+			lightLevel -= 0.1f;
+			shaderTexture->use();
+			shaderTexture->setFloat("lightLevel", lightLevel);
+		}
 	}
 	else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
@@ -358,9 +353,10 @@ int main()
 
 	Shader lineShader("../shaders/vert_line.glsl", "../shaders/frag_line.glsl","line shader");
 
+	shaderTexture = std::make_unique<Shader>("../shaders/vert_texture.glsl", "../shaders/frag_texture.glsl","texture shader");
 	//create a shader program from a vert and frag path
-	Shader shaderTexture("../shaders/vert_texture.glsl", "../shaders/frag_texture.glsl","texture shader");
-	shaderTexture.use();
+	shaderTexture->use();
+	shaderTexture->setFloat("lightLevel", lightLevel);
 
 	Shader diffuseShader("../shaders/vert_diffuse.glsl", "../shaders/frag_diffuse.glsl", "diffuse shader");
 
@@ -487,6 +483,8 @@ int main()
 	TextWriter fontWriter;
 
 
+
+	std::vector<float> frameRates;
 	// render loop
 	// -----------
 	float lastTime = glfwGetTime();
@@ -507,6 +505,7 @@ int main()
 		float elapsedTime = timeValue - lastTime;
 		float frameRate = 1 / elapsedTime;
 		lastTime = timeValue;
+		frameRates.push_back(frameRate);
 
 
 
@@ -533,10 +532,10 @@ int main()
 		diffuseShader.setMat4("view", view);
 		diffuseShader.setMat4("projection", projection);
 
-		shaderTexture.use();
-		shaderTexture.setMat4("model", model);
-		shaderTexture.setMat4("view", view);
-		shaderTexture.setMat4("projection", projection);
+		shaderTexture->use();
+		shaderTexture->setMat4("model", model);
+		shaderTexture->setMat4("view", view);
+		shaderTexture->setMat4("projection", projection);
 
 
 		glBindVertexArray(dirtVAO);
@@ -649,12 +648,12 @@ int main()
 									diffuseShader.use();
 									diffuseShader.setMat4("model", model);
 									glDrawArrays(GL_TRIANGLES, 0, 36);
-									shaderTexture.use();
+									shaderTexture->use();
 									continue;
 								}
 							}
 
-							shaderTexture.setMat4("model", model);
+							shaderTexture->setMat4("model", model);
 
 							if (blockType == BlockTypes::Dirt) {
 								glBindVertexArray(dirtVAO);
@@ -730,6 +729,9 @@ int main()
 			}
 			fontWriter.RenderText(blockString, 25.0f, SCR_HEIGHT - 250, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
 
+			std::string lightLevelString = "Light level: " + std::to_string(lightLevel);
+			fontWriter.RenderText(lightLevelString, 25.0f, SCR_HEIGHT - 300, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+
 		}
 
 
@@ -755,6 +757,11 @@ int main()
 	// glfw: terminate, clearing all previously allocated GLFW resources.
 	// ------------------------------------------------------------------
 	glfwTerminate();
+
+	frameRates.erase(frameRates.begin());
+	auto avgFrameRate = std::reduce(frameRates.begin(), frameRates.end()) / frameRates.size();
+	printf("Average frame rate of %d frames was %f", int(frameRates.size()), avgFrameRate);
+
 	return 0;
 }
 
