@@ -1,4 +1,3 @@
-
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
@@ -23,6 +22,7 @@
 #include "save.h"
 #include "Timer.h"
 #include "ThreadPool.h"
+#include <atomic>
 
 
 
@@ -582,7 +582,7 @@ int main()
 
 
 
-		int blocksCulled = 0;
+		std::atomic_int blocksCulled = 0;
 		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
 
 
@@ -743,38 +743,33 @@ int main()
 		}
 
 
-		if (renderDebugInfo) {
-			fontWriter.RenderText(std::to_string(frameRate), 25.0f, SCR_HEIGHT - 100, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-			std::string posString = std::to_string(player.cam.position.x) + ", " + std::to_string(player.cam.position.y) + ", " + std::to_string(player.cam.position.z);
-			fontWriter.RenderText(posString, 25.0f, SCR_HEIGHT - 150, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-			std::string culledString = "Blocks culled: " + std::to_string(blocksCulled);
-			fontWriter.RenderText(culledString, 25.0f, SCR_HEIGHT - 200, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
 
-			std::string blockString;
+		if (renderDebugInfo) {
+			// Start the Dear ImGui frame
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+
+			//ImGui::ImVec2 LastValidMousePos(3,4);
+
+			ImGui::SetNextWindowPos({ 20,15 });
+			ImGui::Begin("Debug Info");
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::Text("Position: x: %f, y: %f, z: %f", player.cam.position.x, player.cam.position.y, player.cam.position.z);
+			ImGui::Text("Blocks Culled: %d", blocksCulled.load());
 			if (player.isLookingAtBlock) {
 				auto b = player.blockLookingAt;
 				std::string blockTypeString = blockTypeToString(world.getBlock(b)->type);
-				blockString = "Player is looking at: " + blockTypeString + ", in position " + std::to_string(b.x) + "," + std::to_string(b.y) + "," + std::to_string(b.z);
+				ImGui::Text("Player is looking at %s in position %d,%d,%d", blockTypeString.c_str(), b.x, b.y, b.z);
 			}
 			else {
-				blockString = "Player is not looking at block";
+				ImGui::Text("Player is not looking at block");
 			}
-			fontWriter.RenderText(blockString, 25.0f, SCR_HEIGHT - 250, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+			ImGui::End();
 
-			std::string lightLevelString = "Light level: " + std::to_string(lightLevel);
-			fontWriter.RenderText(lightLevelString, 25.0f, SCR_HEIGHT - 300, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
-
-		// Start the Dear ImGui frame
-		
-		
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-		ImGui::ShowDemoWindow();
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
