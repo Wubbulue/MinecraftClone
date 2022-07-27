@@ -1,3 +1,8 @@
+
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "Player.h"
@@ -214,6 +219,10 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 	player.cam.processSroll(float(yoffset));
 }
 
+static void glfw_error_callback(int error, const char* description)
+{
+	fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
 
 //will only get called when a key is pressed
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -286,8 +295,9 @@ void rotateAboutPoint(glm::mat4& mat, float rotationAmount, float xOffset, float
 int main()
 {
 
+	glfwSetErrorCallback(glfw_error_callback);
 
-	saver = std::make_shared<worldSaver>("../saves/save.world", &player);
+	saver = std::make_shared<worldSaver>("../save.world", &player);
 	chunkManager = std::make_unique<ChunkManager>(saver.get(), &player, &world);
 	chunkManager->initWorld();
 
@@ -348,6 +358,22 @@ int main()
 	//glDepthFunc(GL_NEVER);
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+
+	const char* glsl_version = "#version 330";
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
+
+
+
+
+
 
 
 
@@ -490,6 +516,12 @@ int main()
 	float lastTime = glfwGetTime();
 	while (!glfwWindowShouldClose(window))
 	{
+
+
+
+
+
+
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -734,6 +766,15 @@ int main()
 
 		}
 
+		// Start the Dear ImGui frame
+		
+		
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		ImGui::ShowDemoWindow();
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -753,6 +794,13 @@ int main()
 	glDeleteVertexArrays(1, &lineVAO);
 	glDeleteBuffers(1, &lineVBO);
 	//glDeleteBuffers(1, &EBO);
+
+
+	// Cleanup
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
 
 	// glfw: terminate, clearing all previously allocated GLFW resources.
 	// ------------------------------------------------------------------

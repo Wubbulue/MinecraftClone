@@ -6,8 +6,13 @@ set (CMAKE_CXX_STANDARD 17)
  
 
 set (ThirdParty ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty)
+set (ImGuiSrc ${ThirdParty}/lib/imgui)
 
 add_library(glad ${ThirdParty}/lib/glad/glad.c)
+
+add_library(imgui ${ImGuiSrc}/imgui.cpp ${ImGuiSrc}/imgui_impl_glfw.cpp ${ImGuiSrc}/imgui_impl_opengl3.cpp ${ImGuiSrc}/imgui_demo.cpp ${ImGuiSrc}/imgui_draw.cpp ${ImGuiSrc}/imgui_tables.cpp ${ImGuiSrc}/imgui_widgets.cpp)
+
+
 
 message(${ThirdParty})
 
@@ -22,6 +27,6 @@ font.h font.cpp Colors.h save.h save.cpp Timer.h Timer.cpp ThreadPool.h ThreadPo
 include_directories(${ThirdParty}/include ${CMAKE_CURRENT_SOURCE_DIR}/glm)
 
 
-TARGET_LINK_LIBRARIES (GL_Practice PUBLIC ${ThirdParty}/lib/glfw/glfw3.lib ${ThirdParty}/lib/freetype/freetype.lib glad)         
+TARGET_LINK_LIBRARIES (GL_Practice PUBLIC ${ThirdParty}/lib/glfw/glfw3.lib ${ThirdParty}/lib/freetype/freetype.lib glad imgui)         
 
 
