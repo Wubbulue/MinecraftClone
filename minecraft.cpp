@@ -536,6 +536,9 @@ int World::customIndex(int x, int z, int y)
 	return (x)+((z)*worldLength)+((y)*worldLength*worldLength);
 }
 
+int World::customIndex(const BlockPosition& pos) {
+	return (pos.x)+((pos.z)*worldLength)+((pos.y)*worldLength*worldLength);
+}
 
 void World::getBlocksToRenderThreaded(int chunkX, int chunkZ)
 {

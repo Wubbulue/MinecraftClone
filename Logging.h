@@ -3,11 +3,11 @@
 
 #include <stdio.h>
 
-#ifdef _DEBUG
-#define assert(cond) if(!cond) __debugbreak()
-#else
+//#ifdef _DEBUG
+//#define assert(cond) if(!cond) __debugbreak()
+//#else
 #define assert(cond) if(!cond) printf("Assert called in %s at line %d\n",__FILE__,__LINE__);
-#endif // DEBUG
+//#endif // DEBUG
 
 //disabled for now
 //#define warn(string) printf("WARNING: %s ... from %s at line %d\n",string,__FILE__,__LINE__);

@@ -183,6 +183,7 @@ public:
 		//set it to size of blocks around player
 		tempBlocks.resize(CHUNK_HEIGHT*CHUNK_LENGTH*CHUNK_LENGTH*(pow(renderDistance*2+1,2)));
 		blocksToRender.resize(tempBlocks.size());
+		lightLevel.resize(tempBlocks.size());
 
 	}
 
@@ -221,6 +222,7 @@ public:
 	bool isBlockAdjacentToAir(BlockPosition pos);
 
 	int customIndex(int x, int z, int y);
+	int customIndex(const BlockPosition &);
 
 
 	void getBlocksToRenderThreaded(int chunkX,int chunkZ);
@@ -237,6 +239,9 @@ public:
 
 	//these are the blocks that should be rendered on each frame
 	std::vector<Block> blocksToRender;
+
+	//ranges from 0 to 15
+	std::vector<uint8_t> lightLevel = {0};
 
 	bool renderBlocksDirty = true;
 	

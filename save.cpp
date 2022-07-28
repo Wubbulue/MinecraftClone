@@ -11,6 +11,12 @@ worldSaver::worldSaver(const std::string& inFile, Player *inPlayer) : player(inP
 
 	bool worldExists = std::filesystem::exists(filename) && std::filesystem::file_size(filename) > 0 ;
 
+	//crude method to overwrite world file, delete it if it exists
+	if (worldExists&&overwriteFile) {
+		std::remove(filename.c_str());
+		worldExists = false;
+	}
+
 	if(!worldExists) {
 
 		//fstream doesn't like to write a file that doesn't exists when it is in input and output mode, so we do this workaround
@@ -90,7 +96,6 @@ bool worldSaver::tryFillChunk(Chunk* chunk) {
 
 void worldSaver::writeChunk(const Chunk &chunk) {
 	
-	printf("wrote a chunk\n");
 	auto hash = World::genHash(chunk.x, chunk.z);
 	auto it = std::find(chunkList.begin(), chunkList.end(), hash);
 	auto pos = std::distance(chunkList.begin(), it);

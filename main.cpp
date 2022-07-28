@@ -41,7 +41,7 @@ unsigned int SCR_HEIGHT = 1000;
 float mixAmount = 0.5f;
 float fov = 45.0f;
 float camHeight = 0.0f;
-float lightLevel = 1.0f;
+unsigned int lightLevel = 15;
 const float mouseSensitivity = 0.1f;
 
 bool renderDebugInfo = true;
@@ -263,18 +263,18 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_EQUAL && action == GLFW_PRESS) //Write chunk 0,0
 	{
-		if (lightLevel <= 0.911f) {
-			lightLevel += 0.1f;
+		if (lightLevel <= 14) {
+			lightLevel += 1;
 			shaderTexture->use();
-			shaderTexture->setFloat("lightLevel", lightLevel);
+			shaderTexture->setUint("lightLevel", lightLevel);
 		}
 	}
 	else if (key == GLFW_KEY_MINUS && action == GLFW_PRESS) //Load chunk 0,0
 	{
-		if (lightLevel >= 0.099f) {
-			lightLevel -= 0.1f;
+		if (lightLevel >= 1) {
+			lightLevel -= 1;
 			shaderTexture->use();
-			shaderTexture->setFloat("lightLevel", lightLevel);
+			shaderTexture->setUint("lightLevel", lightLevel);
 		}
 	}
 	else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -382,7 +382,7 @@ int main()
 	shaderTexture = std::make_unique<Shader>("../shaders/vert_texture.glsl", "../shaders/frag_texture.glsl","texture shader");
 	//create a shader program from a vert and frag path
 	shaderTexture->use();
-	shaderTexture->setFloat("lightLevel", lightLevel);
+	shaderTexture->setUint("lightLevel", lightLevel);
 
 	Shader diffuseShader("../shaders/vert_diffuse.glsl", "../shaders/frag_diffuse.glsl", "diffuse shader");
 
@@ -579,6 +579,20 @@ int main()
 		ThreadPool& pool = ThreadPool::shared_instance();
 		std::vector<Block> cullBlocks = world.blocksToRender;
 		std::vector<std::future<void>> futures;
+		
+		BlockPosition cameraBlockPos;
+		cameraBlockPos.x = player.cam.position.x;
+		cameraBlockPos.y = player.cam.position.y;
+		cameraBlockPos.z = player.cam.position.z;
+		Block* blockCameraIn = world.getBlock(cameraBlockPos);
+		if (blockCameraIn) {
+			//auto index = world.customIndex(cameraBlockPos);
+			for (int i = 1; i < CHUNK_HEIGHT; i++) {
+				cameraBlockPos.y = i;
+				auto innerIndex = world.customIndex(cameraBlockPos);
+				world.lightLevel[innerIndex] = 15; 
+			}
+		}
 
 
 
@@ -661,7 +675,8 @@ int main()
 					for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 						for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
-							auto blockType = cullBlocks[world.customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y)].type;
+							auto idx = world.customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
+							auto blockType = cullBlocks[idx].type;
 
 							if (blockType == BlockTypes::Air) {
 								continue;
@@ -686,6 +701,8 @@ int main()
 							}
 
 							shaderTexture->setMat4("model", model);
+							shaderTexture->setUint("lightLevel", (unsigned int)world.lightLevel[idx]);
+
 
 							if (blockType == BlockTypes::Dirt) {
 								glBindVertexArray(dirtVAO);
