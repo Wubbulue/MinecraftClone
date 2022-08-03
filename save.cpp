@@ -177,7 +177,6 @@ void ChunkManager::checkNewChunk()
 				int32_t x,z;
 				World::retrieveHash(&x, &z, c);
 				loadChunk(x, z);
-				std::cout << "Loaded: " << x << " " << z << std::endl;
 			}
 		}
 
@@ -188,7 +187,6 @@ void ChunkManager::checkNewChunk()
 				unloadChunk(c);
 				int32_t x,z;
 				World::retrieveHash(&x, &z, c);
-				std::cout << "unloaded: " << x << " " << z << std::endl;
 			}
 		}
 

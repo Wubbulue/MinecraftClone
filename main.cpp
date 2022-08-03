@@ -68,6 +68,8 @@ float cubeRadius;
 //need access to this shader on user input callback, thus put it here
 std::unique_ptr<Shader> shaderTexture;
 
+BlockType blockToPlace = BlockTypes::Stone;
+
 
 float outlineVerts[] = {
 
@@ -165,22 +167,27 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
 		glm::vec3 start = player.cam.position;
-		glm::vec3 end = start + (player.cam.direction * lineLength);
-		cameraLines.emplace_back(Line(start, end, glm::vec3(1.0f, 0.0f, 0.0f)));
 
-		auto t1 = std::chrono::high_resolution_clock::now();
 		Ray ray(start, player.cam.direction);
-		world.mineHoleCast(ray, 30.0f);
-		auto t2 = std::chrono::high_resolution_clock::now();
+		BlockPosition pos;
+		
+		if (world.findFirstSolid(ray, 30.0f, pos)) {
+			auto block = world.getBlock(pos);
+			block->type = BlockTypes::Air;
+			world.renderBlocksDirty = true;
+		}
 
-		// floating-point duration: no duration_cast needed
-		std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
+	}
+	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
 
-		// integral duration: requires duration_cast
-		auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
-
-		std::cout << "Took " << int_ms.count() << " microseconds to elimnate blocks" << std::endl;
-
+		Ray ray(player.cam.position, player.cam.direction);
+		BlockPosition pos;
+		
+		if (world.getPlaceBlock(ray, 30.0f, pos)) {
+			auto block = world.getBlock(pos);
+			block->type = blockToPlace;
+			world.renderBlocksDirty = true;
+		}
 
 
 	}
@@ -281,6 +288,24 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		glfwSetWindowShouldClose(window, true);
 		saver->writePosition();
 		saver->closeWorld();
+	}
+	//move block place type left
+	else if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
+		if (blockToPlace == 1) {
+			blockToPlace = BlockTypes::blockTypeStrings.size()-1;
+		}
+		else {
+			blockToPlace--;
+		}
+	}
+	//move block place type right
+	else if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+		if (blockToPlace == (BlockTypes::blockTypeStrings.size()-1)) {
+			blockToPlace = 1;
+		}
+		else {
+			blockToPlace++;
+		}
 	}
 }
 
@@ -437,12 +462,14 @@ int main()
 	};
 
 	//TODO: use classes for these
-	unsigned int cubeVBO,dirtVBO,stoneVBO, dirtVAO, stoneVAO, lineVAO, lineVBO;
+	unsigned int cubeVBO,dirtVBO,stoneVBO, dirtVAO, stoneVAO, lineVAO, lineVBO,planckVAO,planckVBO;
 	glGenVertexArrays(1, &dirtVAO); // we can also generate multiple VAOs or buffers at the same time
 	glGenVertexArrays(1, &stoneVAO); // we can also generate multiple VAOs or buffers at the same time
+	glGenVertexArrays(1, &planckVAO); // we can also generate multiple VAOs or buffers at the same time
 	glGenBuffers(1, &cubeVBO);
 	glGenBuffers(1,&dirtVBO);
 	glGenBuffers(1,&stoneVBO);
+	glGenBuffers(1,&planckVBO);
 
 	glGenVertexArrays(1, &lineVAO); // we can also generate multiple VAOs or buffers at the same time
 	glGenBuffers(1, &lineVBO);
@@ -498,6 +525,25 @@ int main()
 	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  0, (void*)(0));
 	glEnableVertexAttribArray(2);
 	//--------------------------stone-------------------------------------
+
+	//--------------------------Planck-------------------------------------
+	glBindVertexArray(planckVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+
+	// position attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	// texture coord attribute
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, planckVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(planckFaces), planckFaces, GL_STATIC_DRAW);
+
+	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  0, (void*)(0));
+	glEnableVertexAttribArray(2);
+	//--------------------------Planck-------------------------------------
+
 
 
 	//COORDINATE TRANSFORMATIONS
@@ -576,25 +622,26 @@ int main()
 		
 		world.getBlocksToRenderThreaded(player.chunkX,player.chunkZ);
 
+		
+		//BlockPosition cameraBlockPos;
+		//cameraBlockPos.x = player.cam.position.x;
+		//cameraBlockPos.y = player.cam.position.y;
+		//cameraBlockPos.z = player.cam.position.z;
+		//Block* blockCameraIn = world.getBlock(cameraBlockPos);
+		//if (blockCameraIn) {
+		//	//auto index = world.customIndex(cameraBlockPos);
+		//	for (int i = 1; i < CHUNK_HEIGHT; i++) {
+		//		cameraBlockPos.y = i;
+		//		auto innerIndex = world.customIndex(cameraBlockPos);
+		//		world.lightLevel[innerIndex] = 15; 
+		//	}
+		//}
+
+
+
 		ThreadPool& pool = ThreadPool::shared_instance();
 		std::vector<Block> cullBlocks = world.blocksToRender;
 		std::vector<std::future<void>> futures;
-		
-		BlockPosition cameraBlockPos;
-		cameraBlockPos.x = player.cam.position.x;
-		cameraBlockPos.y = player.cam.position.y;
-		cameraBlockPos.z = player.cam.position.z;
-		Block* blockCameraIn = world.getBlock(cameraBlockPos);
-		if (blockCameraIn) {
-			//auto index = world.customIndex(cameraBlockPos);
-			for (int i = 1; i < CHUNK_HEIGHT; i++) {
-				cameraBlockPos.y = i;
-				auto innerIndex = world.customIndex(cameraBlockPos);
-				world.lightLevel[innerIndex] = 15; 
-			}
-		}
-
-
 
 		std::atomic_int blocksCulled = 0;
 		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
@@ -701,7 +748,7 @@ int main()
 							}
 
 							shaderTexture->setMat4("model", model);
-							shaderTexture->setUint("lightLevel", (unsigned int)world.lightLevel[idx]);
+							shaderTexture->setUint("lightLevel", 15);
 
 
 							if (blockType == BlockTypes::Dirt) {
@@ -709,6 +756,9 @@ int main()
 							}
 							else if (blockType == BlockTypes::Stone) {
 								glBindVertexArray(stoneVAO);
+							}
+							else if (blockType == BlockTypes::Planck) {
+								glBindVertexArray(planckVAO);
 							}
 
 							glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -770,13 +820,16 @@ int main()
 			//ImGui::ImVec2 LastValidMousePos(3,4);
 
 			ImGui::SetNextWindowPos({ 20,15 });
-			ImGui::Begin("Debug Info");
+			bool open = false;
+			bool* p_open = &open;
+			ImGui::Begin("Debug Info", p_open,ImGuiWindowFlags_AlwaysAutoResize);
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::Text("Position: x: %f, y: %f, z: %f", player.cam.position.x, player.cam.position.y, player.cam.position.z);
 			ImGui::Text("Blocks Culled: %d", blocksCulled.load());
+			ImGui::Text("Block type to place: %s    (Change with Q and E)", BlockTypes::blockTypeToString(blockToPlace).c_str());
 			if (player.isLookingAtBlock) {
 				auto b = player.blockLookingAt;
-				std::string blockTypeString = blockTypeToString(world.getBlock(b)->type);
+				std::string blockTypeString = BlockTypes::blockTypeToString(world.getBlock(b)->type);
 				ImGui::Text("Player is looking at %s in position %d,%d,%d", blockTypeString.c_str(), b.x, b.y, b.z);
 			}
 			else {
@@ -799,9 +852,11 @@ int main()
 	// ------------------------------------------------------------------------
 	glDeleteVertexArrays(1, &dirtVAO);
 	glDeleteVertexArrays(1, &stoneVAO);
+	glDeleteVertexArrays(1, &planckVAO);
 	glDeleteBuffers(1, &cubeVBO);
 	glDeleteBuffers(1, &dirtVBO);
 	glDeleteBuffers(1, &stoneVBO);
+	glDeleteBuffers(1, &planckVBO);
 
 	glDeleteVertexArrays(1, &lineVAO);
 	glDeleteBuffers(1, &lineVBO);

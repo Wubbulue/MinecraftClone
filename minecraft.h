@@ -86,6 +86,15 @@ const uint8_t stoneFaces[]{
 	1,1,1,1,1,1,
 };
 
+const uint8_t planckFaces[]{
+	4,4,4,4,4,4,
+	4,4,4,4,4,4,
+	4,4,4,4,4,4,
+	4,4,4,4,4,4,
+	4,4,4,4,4,4,
+	4,4,4,4,4,4,
+};
+
 
 typedef uint8_t BlockType;
 
@@ -94,6 +103,9 @@ namespace BlockTypes {
 	const BlockType Air = 0;
 	const BlockType Stone = 1;
 	const BlockType Dirt = 2;
+	const BlockType Planck = 3;
+	const std::array<std::string, 4> blockTypeStrings = {"Air","Stone","Dirt","Planck"};
+	std::string blockTypeToString(BlockType type);
 };
 
 //enum class BlockType {
@@ -102,7 +114,6 @@ namespace BlockTypes {
 //	Stone
 //};
 
-const char* blockTypeToString(BlockType type);
 
 struct Block {
 	BlockType type = BlockTypes::Air;
@@ -190,8 +201,11 @@ public:
 	//will only currently work for rays cast inside world bounds 
 	void mineHoleCast(const Ray& ray, const float& length);
 
-	//traverses until a solid block is found. If none, returns false, still unsure if this traverses the full distance
+	//traverses until a solid block is found. If none, returns false
 	bool findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos);
+
+	//traverses until a solid block is found. If one is found, returns the air block right before that(where a block should be placed). If none is found, function returns false.
+	bool getPlaceBlock(const Ray& ray, const float& length, BlockPosition& pos);
 
 	uint32_t numBlocks();
 

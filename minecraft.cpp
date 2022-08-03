@@ -120,26 +120,9 @@ BlockPosition Chunk::findBlock(glm::vec3 position) {
 
 }
 
-const char* blockTypeToString(BlockType type) {
-	switch (type) {
 
-	case BlockTypes::Dirt:
-	{
-		return "Dirt";
-	}
-
-	case BlockTypes::Air:
-	{
-
-		return "Air";
-	}
-
-	case BlockTypes::Stone:
-	{
-		return "Stone";
-	}
-	}
-	
+std::string BlockTypes::blockTypeToString(BlockType type) {
+	return blockTypeStrings[(size_t)type];
 }
 
 
@@ -804,6 +787,151 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 	return false;
 
 }
+
+bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& pos) {
+
+
+	float tMin;
+	float tMax;
+	glm::vec3 ray_start, ray_end;
+	ray_start = ray.orig;
+	ray_end = ray.dir * length + ray.orig;
+
+
+	BlockPosition curPos = findBlock(ray_start);
+	BlockPosition endPos = findBlock(ray_end);
+
+	//auto chunkTemp = getChunkContainingBlock(endPos.x, endPos.z);
+	//BlockType type;
+	//if (chunkTemp) {
+	//	auto blockTemp = chunkTemp->indexAbsolute(endPos);
+	//	type = blockTemp->type;
+	//	blockTemp->type = BlockTypes::Stone;
+	//}
+
+
+	int stepX;
+	float tDeltaX;
+	float tMaxX;
+	if (ray.dir.x > 0.0) {
+		stepX = 1;
+		tDeltaX = 1.0f / ray.dir.x;
+		tMaxX = ((curPos.x+1) - ray_start.x) / ray.dir.x;
+	}
+	else if (ray.dir.x < 0.0) {
+		stepX = -1;
+		tDeltaX = 1.0f / -ray.dir.x;
+		tMaxX = (curPos.x - ray_start.x) / ray.dir.x;
+	}
+	else {
+		//never increment x
+		stepX = 0;
+		tMaxX = std::numeric_limits<float>::max();
+		tDeltaX = std::numeric_limits<float>::max();
+	}
+
+	int stepY;
+	float tDeltaY;
+	float tMaxY;
+	if (ray.dir.y > 0.0) {
+		stepY = 1;
+		tDeltaY = 1.0f / ray.dir.y;
+		tMaxY = ((curPos.y+1) - ray_start.y) / ray.dir.y;
+	}
+	else if (ray.dir.y < 0.0) {
+		stepY = -1;
+		tDeltaY = 1.0f / -ray.dir.y;
+		tMaxY = (curPos.y - ray_start.y) / ray.dir.y;
+	}
+	else {
+		stepY = 0;
+		tMaxY = std::numeric_limits<float>::max();
+		tDeltaY = std::numeric_limits<float>::max();
+	}
+
+	int stepZ;
+	float tDeltaZ;
+	float tMaxZ;
+	if (ray.dir.z > 0.0) {
+		stepZ = 1;
+		tDeltaZ = 1.0f / ray.dir.z;
+		tMaxZ = ((curPos.z+1) - ray_start.z) / ray.dir.z;
+	}
+	else if (ray.dir.z < 0.0) {
+		stepZ = -1;
+		tDeltaZ = 1.0f / -ray.dir.z;
+		tMaxZ = (curPos.z - ray_start.z) / ray.dir.z;
+	}
+	else {
+		stepZ = 0;
+		tMaxZ = std::numeric_limits<float>::max();
+		tDeltaZ = std::numeric_limits<float>::max();
+	}
+
+
+
+	BlockPosition prevPos = curPos;
+	auto chunk = getChunkContainingBlock(curPos.x, curPos.z);
+	while (curPos.x != endPos.x  || curPos.z != endPos.z || curPos.y != endPos.y) {
+
+		//check y bounds TODO: this will prevent picking from rays cast outside y range, implement actual solution of trying a shorter ray
+		if ((curPos.y >= CHUNK_HEIGHT)||(curPos.y<0)) {
+			return false;
+		}
+
+		if (!chunk) {
+			warn("Chunk loading can't keep up");
+			return false;
+		}
+
+		auto block = chunk->indexAbsolute(curPos);
+		if (block->type != BlockTypes::Air) {
+			if (prevPos != curPos) {
+				pos = prevPos;
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+
+		prevPos = curPos;
+
+		if (tMaxX < tMaxY && tMaxX < tMaxZ) {
+			// X-axis traversal.
+			curPos.x += stepX;
+
+			//check if we crossed a chunk border and rent a new chunk if we did
+			bool crossPositive = (curPos.x % CHUNK_LENGTH == 0) && (stepX > 0);
+			bool crossNegative = ((curPos.x+1) % CHUNK_LENGTH == 0) && (stepX < 0);
+			if (crossPositive||crossNegative) {
+				chunk = getChunkContainingBlock(curPos.x, curPos.z);
+			}
+
+			tMaxX += tDeltaX;
+		}
+		else if (tMaxY < tMaxZ) {
+			// Y-axis traversal.
+			curPos.y += stepY;
+			tMaxY += tDeltaY;
+		}
+		else {
+			// Z-axis traversal.
+			curPos.z += stepZ;
+
+			bool crossPositive = (curPos.z % CHUNK_LENGTH == 0) && (stepZ > 0);
+			bool crossNegative = ((curPos.z+1) % CHUNK_LENGTH == 0) && (stepZ < 0);
+			if (crossPositive||crossNegative) {
+				chunk = getChunkContainingBlock(curPos.x, curPos.z);
+			}
+
+			tMaxZ += tDeltaZ;
+		}
+	}
+	return false;
+
+}
+
 
 uint32_t World::numBlocks() {
 
