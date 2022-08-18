@@ -523,134 +523,201 @@ int World::customIndex(const BlockPosition& pos) {
 	return (pos.x)+((pos.z)*worldLength)+((pos.y)*worldLength*worldLength);
 }
 
-void World::getBlocksToRenderThreaded(int chunkX, int chunkZ)
+void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &camFrustum)
 {
 
-	if (!renderBlocksDirty) {
-		return;
-	}
+	//cull obfuscated
+	if(renderBlocksDirty)
+	{
 
-	renderBlocksDirty = false;
+		renderBlocksDirty = false;
+		
+		//gather all blocks to operate on
+		{
+			int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
 
-	int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
+			for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
 
-	for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
+				numChunkZ = 0;
+				for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
+					auto chunk = getChunk(i, j);
+					assert(chunk);
 
-		numChunkZ = 0;
-		for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
-			auto chunk = getChunk(i, j);
-			assert(chunk);
+					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 
-			for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+								int largeIndex = customIndex(x + (CHUNK_LENGTH * numChunkX), z + (CHUNK_LENGTH * numChunkZ), y);
+								int index = index(x, z, y);
+								fullWorld[largeIndex] = chunk->blocks[index];
 
-				for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-					for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-						int largeIndex = customIndex(x + (CHUNK_LENGTH * numChunkX), z + (CHUNK_LENGTH * numChunkZ), y);
-						int index = index(x, z, y);
-						tempBlocks[largeIndex] = chunk->blocks[index];
-
-					}
-				}
-			}
-			chunkNum++;
-
-			numChunkZ++;
-		}
-
-		numChunkX++;
-
-	}
-
-
-	blocksToRender = tempBlocks; // copy data into old one
-
-	int originX = chunkX * CHUNK_LENGTH;
-	int originZ = chunkZ * CHUNK_LENGTH;
-
-	int minX = originX - (CHUNK_LENGTH * renderDistance);
-	int minZ = originZ - (CHUNK_LENGTH * renderDistance);
-
-	int maxX = originX + (CHUNK_LENGTH * renderDistance) - 1;
-	int maxZ = originZ + (CHUNK_LENGTH * renderDistance) - 1;
-
-	chunkNum = 0;
-	numChunkX = 0;
-	numChunkZ = 0;
-
-
-	std::vector<std::future<void>> futures;
-	ThreadPool& pool = ThreadPool::shared_instance();
-
-
-
-	for (int i = chunkX - renderDistance; i < chunkX + renderDistance+1; i++) {
-
-		numChunkZ = 0;
-		for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
-
-			futures.emplace_back(pool.enqueue([chunkNum, this, numChunkX, numChunkZ, minX, minZ, maxX, maxZ, i, j] {
-				for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
-					for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-						for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-
-							int offset = chunkNum * chunkDataOffset;
-							int blockX = x + numChunkX * CHUNK_LENGTH;
-							int blockZ = z + numChunkZ * CHUNK_LENGTH;
-							int index = customIndex(blockX, blockZ, y);
-
-							int absX = x + (i * CHUNK_LENGTH);
-							int absZ = z + (j * CHUNK_LENGTH);
-
-							if (tempBlocks[index].type == BlockTypes::Air) {
-								//blocks[posInArray].type = BlockTypes::Air; // probably don't need this line
-								continue;
 							}
-
-
-
-							if ((absX > minX) && (tempBlocks[customIndex(blockX - 1, blockZ, y)].type == BlockTypes::Air)) {
-								continue;
-							}
-							if ((absX < maxX) && (tempBlocks[customIndex(blockX + 1, blockZ, y)].type == BlockTypes::Air)) {
-								continue;
-							}
-
-							//check z adjacency
-							if ((absZ > minZ) && (tempBlocks[customIndex(blockX, blockZ - 1, y)].type == BlockTypes::Air)) {
-								continue;
-							}
-							if ((absZ < maxZ) && (tempBlocks[customIndex(blockX, blockZ + 1, y)].type == BlockTypes::Air)) {
-								continue;
-							}
-
-							//check y adjacency
-							if ((y > 0) && (tempBlocks[customIndex(blockX, blockZ, y - 1)].type == BlockTypes::Air)) {
-								continue;
-							}
-
-							if ((y < (CHUNK_HEIGHT - 1)) && (tempBlocks[customIndex(blockX, blockZ, y + 1)].type == BlockTypes::Air)) {
-								continue;
-							}
-
-							blocksToRender[index].type = BlockTypes::Air;
-
 						}
 					}
+					chunkNum++;
+
+					numChunkZ++;
 				}
-				}));
 
+				numChunkX++;
 
-			chunkNum++;
-
-			numChunkZ++;
+			}
 		}
 
-		numChunkX++;
+		airCulled = fullWorld;
+
+		//cull blocks that aren't adjacent to air
+		{
+			int originX = chunkX * CHUNK_LENGTH;
+			int originZ = chunkZ * CHUNK_LENGTH;
+
+			int minX = originX - (CHUNK_LENGTH * renderDistance);
+			int minZ = originZ - (CHUNK_LENGTH * renderDistance);
+
+			int maxX = originX + (CHUNK_LENGTH * renderDistance) - 1;
+			int maxZ = originZ + (CHUNK_LENGTH * renderDistance) - 1;
+
+			int chunkNum = 0;
+			int numChunkX = 0;
+			int numChunkZ = 0;
+
+
+			std::vector<std::future<void>> futures;
+			ThreadPool& pool = ThreadPool::shared_instance();
+
+
+
+			for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
+
+				numChunkZ = 0;
+				for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
+
+					futures.emplace_back(pool.enqueue([chunkNum, this, numChunkX, numChunkZ, minX, minZ, maxX, maxZ, i, j] {
+						for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+							for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+								for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+
+									int offset = chunkNum * chunkDataOffset;
+									int blockX = x + numChunkX * CHUNK_LENGTH;
+									int blockZ = z + numChunkZ * CHUNK_LENGTH;
+									int index = customIndex(blockX, blockZ, y);
+
+									int absX = x + (i * CHUNK_LENGTH);
+									int absZ = z + (j * CHUNK_LENGTH);
+
+									if (fullWorld[index].type == BlockTypes::Air) {
+										//blocks[posInArray].type = BlockTypes::Air; // probably don't need this line
+										continue;
+									}
+
+
+
+									if ((absX > minX) && (fullWorld[customIndex(blockX - 1, blockZ, y)].type == BlockTypes::Air)) {
+										continue;
+									}
+									if ((absX < maxX) && (fullWorld[customIndex(blockX + 1, blockZ, y)].type == BlockTypes::Air)) {
+										continue;
+									}
+
+									//check z adjacency
+									if ((absZ > minZ) && (fullWorld[customIndex(blockX, blockZ - 1, y)].type == BlockTypes::Air)) {
+										continue;
+									}
+									if ((absZ < maxZ) && (fullWorld[customIndex(blockX, blockZ + 1, y)].type == BlockTypes::Air)) {
+										continue;
+									}
+
+									//check y adjacency
+									if ((y > 0) && (fullWorld[customIndex(blockX, blockZ, y - 1)].type == BlockTypes::Air)) {
+										continue;
+									}
+
+									if ((y < (CHUNK_HEIGHT - 1)) && (fullWorld[customIndex(blockX, blockZ, y + 1)].type == BlockTypes::Air)) {
+										continue;
+									}
+
+									airCulled[index].type = BlockTypes::Air;
+
+								}
+							}
+						}
+					}));
+
+
+					chunkNum++;
+
+					numChunkZ++;
+				}
+
+				numChunkX++;
+			}
+
+			for (const auto& f : futures) {
+				f.wait();
+			}
+		}
 	}
 
-	for (const auto& f : futures) {
-		f.wait();
+	//frustum cull from camera
+	{
+		fullCulled = airCulled;
+		ThreadPool& pool = ThreadPool::shared_instance();
+		std::vector<std::future<void>> futures;
+
+		int chunkNum = 0,numChunkX=0,numChunkZ=0;
+
+		for (int i = chunkX - renderDistance; i < chunkX + renderDistance+1; i++) {
+
+			numChunkZ = 0;
+			for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance+1; j++) {
+
+
+				float offsetX = i * CHUNK_LENGTH;
+				float offsetZ = j * CHUNK_LENGTH;
+
+
+				futures.emplace_back(pool.enqueue([chunkNum, numChunkX, numChunkZ, offsetX,offsetZ,camFrustum, i, j,this] {
+					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+
+						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+
+
+								auto block = fullCulled.data() + customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
+								if (block->type == BlockTypes::Air) {
+									continue;
+								}
+
+
+								glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
+
+								SquareAABB square(center, 0.5f);
+								bool isOnFurstum = square.isOnFrustum(camFrustum);
+
+								if (!isOnFurstum) {
+									block->type = BlockTypes::Air;
+									continue;
+								}
+
+							}
+						}
+					}
+				}));
+
+				chunkNum++;
+				numChunkZ++;
+
+			}
+
+			numChunkX++;
+
+		}
+
+		for (const auto& f : futures) {
+			f.wait();
+		}
 	}
+
 }
 
 bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos) {

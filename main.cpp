@@ -35,8 +35,8 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 // settings
-unsigned int SCR_WIDTH = 1200;
-unsigned int SCR_HEIGHT = 1000;
+unsigned int SCR_WIDTH = 1920;
+unsigned int SCR_HEIGHT = 1080;
 
 float mixAmount = 0.5f;
 float fov = 45.0f;
@@ -463,15 +463,15 @@ int main()
 
 	//TODO: use classes for these
 	unsigned int cubeVBO,dirtVBO,stoneVBO, dirtVAO, stoneVAO, lineVAO, lineVBO,planckVAO,planckVBO;
-	glGenVertexArrays(1, &dirtVAO); // we can also generate multiple VAOs or buffers at the same time
-	glGenVertexArrays(1, &stoneVAO); // we can also generate multiple VAOs or buffers at the same time
-	glGenVertexArrays(1, &planckVAO); // we can also generate multiple VAOs or buffers at the same time
+	glGenVertexArrays(1, &dirtVAO); 
+	glGenVertexArrays(1, &stoneVAO); 
+	glGenVertexArrays(1, &planckVAO);
 	glGenBuffers(1, &cubeVBO);
 	glGenBuffers(1,&dirtVBO);
 	glGenBuffers(1,&stoneVBO);
 	glGenBuffers(1,&planckVBO);
 
-	glGenVertexArrays(1, &lineVAO); // we can also generate multiple VAOs or buffers at the same time
+	glGenVertexArrays(1, &lineVAO);
 	glGenBuffers(1, &lineVBO);
 	
 
@@ -620,8 +620,9 @@ int main()
 
 
 		
-		world.getBlocksToRenderThreaded(player.chunkX,player.chunkZ);
 
+		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
+		world.getBlocksToRenderThreaded(player.chunkX,player.chunkZ,camFrustum);
 		
 		//BlockPosition cameraBlockPos;
 		//cameraBlockPos.x = player.cam.position.x;
@@ -639,72 +640,10 @@ int main()
 
 
 
-		ThreadPool& pool = ThreadPool::shared_instance();
-		std::vector<Block> cullBlocks = world.blocksToRender;
-		std::vector<std::future<void>> futures;
 
-		std::atomic_int blocksCulled = 0;
-		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
 
 
 		int chunkNum = 0,numChunkX=0,numChunkZ=0;
-
-		for (int i = player.chunkX - world.renderDistance; i < player.chunkX + world.renderDistance+1; i++) {
-
-			numChunkZ = 0;
-			for (int j = player.chunkZ - world.renderDistance; j < player.chunkZ + world.renderDistance+1; j++) {
-
-
-				float offsetX = i * CHUNK_LENGTH;
-				float offsetZ = j * CHUNK_LENGTH;
-
-
-				futures.emplace_back(pool.enqueue([chunkNum, numChunkX, numChunkZ, offsetX,offsetZ,camFrustum,&blocksCulled, i, j,&cullBlocks] {
-					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
-
-						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-
-
-								auto block = cullBlocks.data() + world.customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
-								if (block->type == BlockTypes::Air) {
-									continue;
-								}
-
-								if (shouldFrustumCull) {
-
-									glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
-
-									SquareAABB square(center, 0.5f);
-									bool isOnFurstum = square.isOnFrustum(camFrustum);
-
-									if (!isOnFurstum) {
-										blocksCulled++;
-										block->type = BlockTypes::Air;
-										continue;
-									}
-
-								}
-							}
-						}
-					}
-				}));
-
-				chunkNum++;
-				numChunkZ++;
-
-			}
-
-			numChunkX++;
-
-		}
-
-		for (const auto& f : futures) {
-			f.wait();
-		}
-
-
-		chunkNum = 0,numChunkX=0,numChunkZ=0;
 
 		for (int i = player.chunkX - world.renderDistance; i < player.chunkX + world.renderDistance+1; i++) {
 
@@ -723,7 +662,7 @@ int main()
 						for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
 							auto idx = world.customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
-							auto blockType = cullBlocks[idx].type;
+							auto blockType = world.fullCulled[idx].type;
 
 							if (blockType == BlockTypes::Air) {
 								continue;
@@ -825,7 +764,6 @@ int main()
 			ImGui::Begin("Debug Info", p_open,ImGuiWindowFlags_AlwaysAutoResize);
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::Text("Position: x: %f, y: %f, z: %f", player.cam.position.x, player.cam.position.y, player.cam.position.z);
-			ImGui::Text("Blocks Culled: %d", blocksCulled.load());
 			ImGui::Text("Block type to place: %s    (Change with Q and E)", BlockTypes::blockTypeToString(blockToPlace).c_str());
 			if (player.isLookingAtBlock) {
 				auto b = player.blockLookingAt;

@@ -68,6 +68,8 @@ const float cubeVertices[]{
 	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f
 };
 
+
+//TODO: this is clearly really bad...
 const uint8_t dirtFaces[]{
 	3,3,3,3,3,3,
 	3,3,3,3,3,3,
@@ -171,6 +173,8 @@ public:
 	BlockPosition findBlock(glm::vec3 position);
 
 
+
+
 	Box3 getBox();
 
 
@@ -192,9 +196,10 @@ public:
 		perlin = siv::PerlinNoise(seed);
 
 		//set it to size of blocks around player
-		tempBlocks.resize(CHUNK_HEIGHT*CHUNK_LENGTH*CHUNK_LENGTH*(pow(renderDistance*2+1,2)));
-		blocksToRender.resize(tempBlocks.size());
-		lightLevel.resize(tempBlocks.size());
+		fullWorld.resize(CHUNK_HEIGHT*CHUNK_LENGTH*CHUNK_LENGTH*(pow(renderDistance*2+1,2)));
+		airCulled.resize(fullWorld.size());
+		fullCulled.resize(fullWorld.size());
+		lightLevel.resize(fullWorld.size());
 
 	}
 
@@ -239,7 +244,7 @@ public:
 	int customIndex(const BlockPosition &);
 
 
-	void getBlocksToRenderThreaded(int chunkX,int chunkZ);
+	void getBlocksToRenderThreaded(int chunkX,int chunkZ, const Frustum &camFrustum);
 
 	//~World() {
 		//for (auto& [key, chunk] : chunks)
@@ -249,10 +254,14 @@ public:
 	//}
 
 	//this is a vector of all blocks around the player which is updated by the getBlocksToRender function to save it from being allocated every frame
-	std::vector<Block> tempBlocks;
+	std::vector<Block> fullWorld;
 
 	//these are the blocks that should be rendered on each frame
-	std::vector<Block> blocksToRender;
+	std::vector<Block> airCulled;
+
+	//these are the blocks that should be rendered on each frame
+	std::vector<Block> fullCulled;
+
 
 	//ranges from 0 to 15
 	std::vector<uint8_t> lightLevel = {0};
@@ -277,6 +286,8 @@ public:
 
 
 private:
+	unsigned int vao;
+	unsigned int vbo;
 
 };
 
