@@ -31,6 +31,8 @@
 
 
 
+
+
 //callled on window resize
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -45,8 +47,8 @@ unsigned int lightLevel = 15;
 const float mouseSensitivity = 0.1f;
 
 bool renderDebugInfo = true;
-bool shouldFrustumCull = true;
-bool frustumCullUsingCube = true;
+bool lockFrustum = false;
+Frustum oldFrustum;
 
 
 Player player;
@@ -249,24 +251,16 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		}
 	}
-	else if (key == GLFW_KEY_P && action == GLFW_PRESS) //Print position
-	{
-		printf("Position:%f,%f,%f \n", player.cam.position.x, player.cam.position.y, player.cam.position.z);
-	}
 	else if (key == GLFW_KEY_F3 && action == GLFW_PRESS) //Render debug info
 	{
 		renderDebugInfo = !renderDebugInfo;
 	}
 	else if (key == GLFW_KEY_F && action == GLFW_PRESS) //Frustum cull
 	{
-		shouldFrustumCull = !shouldFrustumCull;
-		if (shouldFrustumCull) {
-			printf("Frustum culling enabled\n");
+		lockFrustum = !lockFrustum;
+		if (lockFrustum) {
+			oldFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
 		}
-		else {
-			printf("Frustum culling disabled\n");
-		}
-		//drawCamFrustum();
 	}
 	else if (key == GLFW_KEY_EQUAL && action == GLFW_PRESS) //Write chunk 0,0
 	{
@@ -395,6 +389,8 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
+	world.initOpenGL();
+
 
 
 
@@ -461,15 +457,9 @@ int main()
 
 	};
 
+
 	//TODO: use classes for these
-	unsigned int cubeVBO,dirtVBO,stoneVBO, dirtVAO, stoneVAO, lineVAO, lineVBO,planckVAO,planckVBO;
-	glGenVertexArrays(1, &dirtVAO); 
-	glGenVertexArrays(1, &stoneVAO); 
-	glGenVertexArrays(1, &planckVAO);
-	glGenBuffers(1, &cubeVBO);
-	glGenBuffers(1,&dirtVBO);
-	glGenBuffers(1,&stoneVBO);
-	glGenBuffers(1,&planckVBO);
+	unsigned int lineVAO, lineVBO;
 
 	glGenVertexArrays(1, &lineVAO);
 	glGenBuffers(1, &lineVBO);
@@ -485,64 +475,6 @@ int main()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	//--------------------------------------------------------------------------
-
-	//TODO: probably there is a cleaner way to do this
-
-	//--------------------------dirt-------------------------------------
-	glBindVertexArray(dirtVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-
-	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	// texture coord attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, dirtVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(dirtFaces), dirtFaces, GL_STATIC_DRAW);
-
-	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  0, (void*)(0));
-	glEnableVertexAttribArray(2);
-	//--------------------------dirt-------------------------------------
-
-	//--------------------------stone-------------------------------------
-	glBindVertexArray(stoneVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-
-	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	// texture coord attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, stoneVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(stoneFaces), stoneFaces, GL_STATIC_DRAW);
-
-	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  0, (void*)(0));
-	glEnableVertexAttribArray(2);
-	//--------------------------stone-------------------------------------
-
-	//--------------------------Planck-------------------------------------
-	glBindVertexArray(planckVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-
-	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	// texture coord attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, planckVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(planckFaces), planckFaces, GL_STATIC_DRAW);
-
-	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  0, (void*)(0));
-	glEnableVertexAttribArray(2);
-	//--------------------------Planck-------------------------------------
 
 
 
@@ -563,12 +495,6 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 
-
-
-
-
-
-
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
@@ -584,8 +510,6 @@ int main()
 		float frameRate = 1 / elapsedTime;
 		lastTime = timeValue;
 		frameRates.push_back(frameRate);
-
-
 
 		if (player.checkPosition(window, elapsedTime)) {
 			//player could be looking at new block after camera movement
@@ -616,108 +540,15 @@ int main()
 		shaderTexture->setMat4("projection", projection);
 
 
-		glBindVertexArray(dirtVAO);
 
 
 		
 
-		Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
+		Frustum camFrustum = lockFrustum ? oldFrustum : createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
 		world.getBlocksToRenderThreaded(player.chunkX,player.chunkZ,camFrustum);
+
+			
 		
-		//BlockPosition cameraBlockPos;
-		//cameraBlockPos.x = player.cam.position.x;
-		//cameraBlockPos.y = player.cam.position.y;
-		//cameraBlockPos.z = player.cam.position.z;
-		//Block* blockCameraIn = world.getBlock(cameraBlockPos);
-		//if (blockCameraIn) {
-		//	//auto index = world.customIndex(cameraBlockPos);
-		//	for (int i = 1; i < CHUNK_HEIGHT; i++) {
-		//		cameraBlockPos.y = i;
-		//		auto innerIndex = world.customIndex(cameraBlockPos);
-		//		world.lightLevel[innerIndex] = 15; 
-		//	}
-		//}
-
-
-
-
-
-
-		int chunkNum = 0,numChunkX=0,numChunkZ=0;
-
-		for (int i = player.chunkX - world.renderDistance; i < player.chunkX + world.renderDistance+1; i++) {
-
-			numChunkZ = 0;
-			for (int j = player.chunkZ - world.renderDistance; j < player.chunkZ + world.renderDistance + 1; j++) {
-
-
-				float offsetX = i * CHUNK_LENGTH;
-				float offsetZ = j * CHUNK_LENGTH;
-
-
-
-				for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
-
-					for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-						for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-
-							auto idx = world.customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
-							auto blockType = world.fullCulled[idx].type;
-
-							if (blockType == BlockTypes::Air) {
-								continue;
-							}
-
-							model = glm::mat4(1.0f);
-
-							//offset by half voxel for center
-							model = glm::translate(model, glm::vec3(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ));
-
-							if (player.isLookingAtBlock) {
-								auto p = player.blockLookingAt;
-								p.x -= i * CHUNK_LENGTH;
-								p.z -= j * CHUNK_LENGTH;
-								if ((p.x == x) && (p.y == y) && (p.z == z)) {
-									diffuseShader.use();
-									diffuseShader.setMat4("model", model);
-									glDrawArrays(GL_TRIANGLES, 0, 36);
-									shaderTexture->use();
-									continue;
-								}
-							}
-
-							shaderTexture->setMat4("model", model);
-							shaderTexture->setUint("lightLevel", 15);
-
-
-							if (blockType == BlockTypes::Dirt) {
-								glBindVertexArray(dirtVAO);
-							}
-							else if (blockType == BlockTypes::Stone) {
-								glBindVertexArray(stoneVAO);
-							}
-							else if (blockType == BlockTypes::Planck) {
-								glBindVertexArray(planckVAO);
-							}
-
-							glDrawArrays(GL_TRIANGLES, 0, 36);
-
-
-						}
-					}
-				}
-
-				chunkNum++;
-				numChunkZ++;
-
-			}
-
-			numChunkX++;
-
-		}
-
-
-
 
 
 
@@ -788,16 +619,10 @@ int main()
 
 	// optional: de-allocate all resources once they've outlived their purpose:
 	// ------------------------------------------------------------------------
-	glDeleteVertexArrays(1, &dirtVAO);
-	glDeleteVertexArrays(1, &stoneVAO);
-	glDeleteVertexArrays(1, &planckVAO);
-	glDeleteBuffers(1, &cubeVBO);
-	glDeleteBuffers(1, &dirtVBO);
-	glDeleteBuffers(1, &stoneVBO);
-	glDeleteBuffers(1, &planckVBO);
-
 	glDeleteVertexArrays(1, &lineVAO);
 	glDeleteBuffers(1, &lineVBO);
+
+	world.cleanOpenGL();
 	//glDeleteBuffers(1, &EBO);
 
 

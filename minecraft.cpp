@@ -48,46 +48,6 @@ bool Chunk::isBlockAdjacentToAir(int x, int y, int z) {
 }
 
 
-void Chunk::eliminateRayIntersection(glm::vec3 rayOrigin, glm::vec3 rayVector) {
-
-	for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
-		for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
-			for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-				if (blocks[index(x,z,y)].type != BlockTypes::Air) {
-					Triangle blockTriangles[12];
-					getBlockTriangles(x, y, z, blockTriangles);
-					for (int i = 0; i < 12; i++) {
-						glm::vec3 outPoint;
-						if (rayIntersect(rayOrigin, rayVector, blockTriangles + i, outPoint)) {
-							blocks[index(x,z,y)].type = BlockTypes::Air;
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-
-void Chunk::getBlockTriangles(int x, int y, int z, Triangle triangles[12]) {
-
-	for (int i = 0; i < 12; i++) {
-		Triangle tempTri;
-
-		//triangle offset
-		short t = i*9;
-
-		for (int j = 0; j < 3; j++) {
-			tempTri.points[j].x = cubeVertices[t + j*3] + x;
-			tempTri.points[j].y = cubeVertices[t + 1 + j*3] + y;
-			tempTri.points[j].z = cubeVertices[t + 2 + j*3] + z;
-		}
-
-		triangles[i] = tempTri;
-	}
-
-}
 
 BlockPosition Chunk::findBlock(glm::vec3 position) {
 
@@ -658,6 +618,9 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 		}
 	}
 
+
+	std::atomic_int numBlocksToRender = 0;
+
 	//frustum cull from camera
 	{
 		fullCulled = airCulled;
@@ -676,7 +639,7 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 				float offsetZ = j * CHUNK_LENGTH;
 
 
-				futures.emplace_back(pool.enqueue([chunkNum, numChunkX, numChunkZ, offsetX,offsetZ,camFrustum, i, j,this] {
+				futures.emplace_back(pool.enqueue([chunkNum, numChunkX, numChunkZ, offsetX,offsetZ,camFrustum, i, j,this,&numBlocksToRender] {
 					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 
 						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
@@ -699,6 +662,8 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 									continue;
 								}
 
+								numBlocksToRender++;
+
 							}
 						}
 					}
@@ -718,6 +683,112 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 		}
 	}
 
+	//pack data into our vbo
+	{
+
+		ThreadPool& pool = ThreadPool::shared_instance();
+		std::vector<std::future<void>> futures;
+
+		glBindVertexArray(VAO);
+
+		// numblocks * (5 floats + 1 char) * 36 verts
+		auto bufSize = numBlocksToRender * 21 * 36;
+		char* buffer = new char[bufSize];
+		int chunkNum = 0,numChunkX=0,numChunkZ=0;
+
+		int bufferWritePos = 0;
+
+		for (int i = chunkX - renderDistance; i < chunkX + renderDistance+1; i++) {
+
+			numChunkZ = 0;
+			for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance+1; j++) {
+
+
+				float offsetX = i * CHUNK_LENGTH;
+				float offsetZ = j * CHUNK_LENGTH;
+
+
+				{
+
+
+					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+
+						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+
+								auto block = fullCulled.data() + customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
+
+								auto blockType = block->type;
+								if (blockType == BlockTypes::Air) {
+									continue;
+								}
+
+								const uint8_t* facesPointer = dirtFaces;
+
+								if (blockType == BlockTypes::Dirt) {
+									facesPointer = dirtFaces;
+								}
+								else if (blockType == BlockTypes::Stone) {
+									facesPointer = stoneFaces;
+								}
+								else if (blockType == BlockTypes::Planck) {
+									facesPointer = planckFaces;
+								}
+
+								glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
+
+								for (int a = 0; a < 36; a++) {
+									{
+										int index = (a * 3);
+										float current = vertPositions[index] + center.x;
+										memcpy(buffer + bufferWritePos, &current, sizeof(float));
+										bufferWritePos += sizeof(float);
+										index++;
+
+										current = vertPositions[index] + center.y;
+										memcpy(buffer + bufferWritePos, &current, sizeof(float));
+										bufferWritePos += sizeof(float);
+										index++;
+
+										current = vertPositions[index] + center.z;
+										memcpy(buffer + bufferWritePos, &current, sizeof(float));
+										bufferWritePos += sizeof(float);
+
+									}
+
+									for (int b = 0; b < 2; b++) {
+										int index = b + (a * 2);
+										memcpy(buffer + bufferWritePos, texPositions + index, sizeof(float));
+										bufferWritePos += sizeof(float);
+									}
+									memcpy(buffer + bufferWritePos, facesPointer + a, sizeof(uint8_t));
+									bufferWritePos += sizeof(uint8_t);
+								}
+
+							}
+						}
+					}
+
+
+				//}));
+				}
+
+				chunkNum++;
+				numChunkZ++;
+
+			}
+
+			numChunkX++;
+
+		}
+
+
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, bufSize, buffer);
+		glDrawArrays(GL_TRIANGLES, 0, 36*numBlocksToRender);
+
+		delete[] buffer;
+	}
 }
 
 bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos) {
@@ -1032,4 +1103,26 @@ void World::removeBlock(const BlockPosition& pos) {
 		auto block = chunk->indexAbsolute(pos);
 		block->type = BlockTypes::Air;
 	}
+}
+
+void World::initOpenGL() {
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	//this might be waaay to much gpu memory to reserve, we will see...
+	const int maxNumBlockToRender = 20000;
+	//not sure if this is good practice to give it nullptr, just want to reserve the memory rn, will set later
+	glBufferData(GL_ARRAY_BUFFER, maxNumBlockToRender * sizeof(float) * 181, nullptr, GL_STATIC_DRAW);
+
+	// position attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 5 * sizeof(float)+1, (void*)0);
+	glEnableVertexAttribArray(0);
+	// texture coord attribute
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 5 * sizeof(float)+1, (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  5 * sizeof(float)+1, (void*)(5 * sizeof(float)));
+	glEnableVertexAttribArray(2);
 }

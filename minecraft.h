@@ -1,6 +1,8 @@
 #ifndef MINECRAFT_HEADER
 #define MINECRAFT_HEADER
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include "PerlinNoise.h"
 #include "glm/glm.hpp"
 #include "geometery.h"
@@ -68,6 +70,108 @@ const float cubeVertices[]{
 	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f
 };
 
+const float vertPositions[]{
+	//negative z
+	-0.5f, -0.5f, -0.5f,
+	 0.5f, -0.5f, -0.5f,
+	 0.5f,  0.5f, -0.5f,
+	 0.5f,  0.5f, -0.5f,
+	-0.5f,  0.5f, -0.5f,
+	-0.5f, -0.5f, -0.5f,
+
+	//positive z
+	-0.5f, -0.5f,  0.5f,
+	 0.5f, -0.5f,  0.5f,
+	 0.5f,  0.5f,  0.5f,
+	 0.5f,  0.5f,  0.5f,
+	-0.5f,  0.5f,  0.5f,
+	-0.5f, -0.5f,  0.5f,
+
+	//negative x
+	-0.5f,  0.5f,  0.5f,
+	-0.5f,  0.5f, -0.5f,
+	-0.5f, -0.5f, -0.5f,
+	-0.5f, -0.5f, -0.5f,
+	-0.5f, -0.5f,  0.5f,
+	-0.5f,  0.5f,  0.5f,
+
+	//positve x
+	 0.5f,  0.5f,  0.5f,
+	 0.5f,  0.5f, -0.5f,
+	 0.5f, -0.5f, -0.5f,
+	 0.5f, -0.5f, -0.5f,
+	 0.5f, -0.5f,  0.5f,
+	 0.5f,  0.5f,  0.5f,
+
+	//negative y
+	-0.5f, -0.5f, -0.5f,
+	 0.5f, -0.5f, -0.5f,
+	 0.5f, -0.5f,  0.5f,
+	 0.5f, -0.5f,  0.5f,
+	-0.5f, -0.5f,  0.5f,
+	-0.5f, -0.5f, -0.5f,
+
+	//positive y
+	-0.5f,  0.5f, -0.5f,
+	 0.5f,  0.5f, -0.5f,
+	 0.5f,  0.5f,  0.5f,
+	 0.5f,  0.5f,  0.5f,
+	-0.5f,  0.5f,  0.5f,
+	-0.5f,  0.5f, -0.5f,
+
+};
+
+const float texPositions[]{
+
+	//negative z
+	0.0f, 0.0f,
+	0.0625f, 0.0f,
+	0.0625f, 0.0625f,
+	0.0625f, 0.0625f,
+	0.0f, 0.0625f,
+	0.0f, 0.0f,
+
+	//positive z
+	0.0f, 0.0f,
+	0.0625f, 0.0f,
+	0.0625f, 0.0625f,
+	0.0625f, 0.0625f,
+	0.0f, 0.0625f,
+	0.0f, 0.0f,
+
+	//negative x
+	0.0625f, 0.0625f,
+	0.0f, 0.0625f,
+	0.0f, 0.0f,
+	0.0f, 0.0f,
+	0.0625f, 0.0f,
+	0.0625f, 0.0625f,
+
+	//positve x
+	0.0f, 0.0625f,
+	0.0625f, 0.0625f,
+	0.0625f, 0.0f,
+	0.0625f, 0.0f,
+	0.0f, 0.0f,
+	0.0f, 0.0625f,
+
+	//negative y
+	0.0f, 0.0625f,
+	0.0625f, 0.0625f,
+	0.0625f, 0.0f,
+	0.0625f, 0.0f,
+	0.0f, 0.0f,
+	0.0f, 0.0625f,
+
+	//positive y
+	0.0f, 0.0625f,
+	0.0625f, 0.0625f,
+	0.0625f, 0.0f,
+	0.0625f, 0.0f,
+	0.0f, 0.0f,
+	0.0f, 0.0625f
+};
+
 
 //TODO: this is clearly really bad...
 const uint8_t dirtFaces[]{
@@ -78,6 +182,7 @@ const uint8_t dirtFaces[]{
 	2,2,2,2,2,2,
 	0,0,0,0,0,0,
 };
+
 
 const uint8_t stoneFaces[]{
 	1,1,1,1,1,1,
@@ -163,11 +268,6 @@ public:
 
 	bool isBlockAdjacentToAir(int x, int y, int z);
 
-	void eliminateRayIntersection(glm::vec3 rayOrigin, glm::vec3 rayVector);
-
-	//generates a list of the triangle geometery for a certain block
-	void getBlockTriangles(int x, int y, int z, Triangle triangles[12]);
-
 	//finds a block and returns its position as x,y,z
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
 	BlockPosition findBlock(glm::vec3 position);
@@ -200,7 +300,17 @@ public:
 		airCulled.resize(fullWorld.size());
 		fullCulled.resize(fullWorld.size());
 		lightLevel.resize(fullWorld.size());
+	}
 
+	void initOpenGL();
+
+	void cleanOpenGL() {
+		glDeleteVertexArrays(1, &VAO);
+		glDeleteBuffers(1, &VBO);
+	}
+
+	~World() {
+		cleanOpenGL();
 	}
 
 	//will only currently work for rays cast inside world bounds 
@@ -282,12 +392,16 @@ public:
 	static void retrieveHash(int32_t *a, int32_t *b, int64_t c);
 
 	std::unordered_map<int64_t, Chunk> chunks;
+
+	unsigned int getVAO() {
+		return VAO;
+	}
 	
 
 
 private:
-	unsigned int vao;
-	unsigned int vbo;
+	unsigned int VAO;
+	unsigned int VBO;
 
 };
 
