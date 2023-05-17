@@ -43,7 +43,7 @@ unsigned int SCR_HEIGHT = 1080;
 float mixAmount = 0.5f;
 float fov = 45.0f;
 float camHeight = 0.0f;
-unsigned int lightLevel = 15;
+// unsigned int lightLevel = 8;
 const float mouseSensitivity = 0.1f;
 
 bool renderDebugInfo = true;
@@ -172,7 +172,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		Ray ray(start, player.cam.direction);
 		BlockPosition pos;
-		
+
 		if (world.findFirstSolid(ray, 30.0f, pos)) {
 			auto block = world.getBlock(pos);
 			block->type = BlockTypes::Air;
@@ -184,7 +184,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		Ray ray(player.cam.position, player.cam.direction);
 		BlockPosition pos;
-		
+
 		if (world.getPlaceBlock(ray, 30.0f, pos)) {
 			auto block = world.getBlock(pos);
 			block->type = blockToPlace;
@@ -262,22 +262,22 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			oldFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
 		}
 	}
-	else if (key == GLFW_KEY_EQUAL && action == GLFW_PRESS) //Write chunk 0,0
-	{
-		if (lightLevel <= 14) {
-			lightLevel += 1;
-			shaderTexture->use();
-			shaderTexture->setUint("lightLevel", lightLevel);
-		}
-	}
-	else if (key == GLFW_KEY_MINUS && action == GLFW_PRESS) //Load chunk 0,0
-	{
-		if (lightLevel >= 1) {
-			lightLevel -= 1;
-			shaderTexture->use();
-			shaderTexture->setUint("lightLevel", lightLevel);
-		}
-	}
+	// else if (key == GLFW_KEY_EQUAL && action == GLFW_PRESS) //Write chunk 0,0
+	// {
+	//         if (lightLevel <= 14) {
+	//                 lightLevel += 1;
+	//                 shaderTexture->use();
+	//                 shaderTexture->setUint("lightLevel", lightLevel);
+	//         }
+	// }
+	// else if (key == GLFW_KEY_MINUS && action == GLFW_PRESS) //Load chunk 0,0
+	// {
+	//         if (lightLevel >= 1) {
+	//                 lightLevel -= 1;
+	//                 shaderTexture->use();
+	//                 shaderTexture->setUint("lightLevel", lightLevel);
+	//         }
+	// }
 	else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 		saver->writePosition();
@@ -286,7 +286,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	//move block place type left
 	else if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
 		if (blockToPlace == 1) {
-			blockToPlace = BlockTypes::blockTypeStrings.size()-1;
+			blockToPlace = BlockTypes::blockTypeStrings.size() - 1;
 		}
 		else {
 			blockToPlace--;
@@ -294,7 +294,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	//move block place type right
 	else if (key == GLFW_KEY_E && action == GLFW_PRESS) {
-		if (blockToPlace == (BlockTypes::blockTypeStrings.size()-1)) {
+		if (blockToPlace == (BlockTypes::blockTypeStrings.size() - 1)) {
 			blockToPlace = 1;
 		}
 		else {
@@ -320,7 +320,7 @@ int main()
 	chunkManager = std::make_unique<ChunkManager>(saver.get(), &player, &world);
 	chunkManager->initWorld();
 
-	
+
 
 	cubeRadius = 1.0f / cos(glm::radians(45.0f));
 
@@ -398,12 +398,12 @@ int main()
 
 
 
-	Shader lineShader("../shaders/vert_line.glsl", "../shaders/frag_line.glsl","line shader");
+	Shader lineShader("../shaders/vert_line.glsl", "../shaders/frag_line.glsl", "line shader");
 
-	shaderTexture = std::make_unique<Shader>("../shaders/vert_texture.glsl", "../shaders/frag_texture.glsl","texture shader");
+	shaderTexture = std::make_unique<Shader>("../shaders/vert_texture.glsl", "../shaders/frag_texture.glsl", "texture shader");
 	//create a shader program from a vert and frag path
 	shaderTexture->use();
-	shaderTexture->setUint("lightLevel", lightLevel);
+	// shaderTexture->setUint("lightLevel", lightLevel);
 
 	Shader diffuseShader("../shaders/vert_diffuse.glsl", "../shaders/frag_diffuse.glsl", "diffuse shader");
 
@@ -463,7 +463,7 @@ int main()
 
 	glGenVertexArrays(1, &lineVAO);
 	glGenBuffers(1, &lineVBO);
-	
+
 
 	// first line setup
 	// --------------------
@@ -542,13 +542,13 @@ int main()
 
 
 
-		
+
 
 		Frustum camFrustum = lockFrustum ? oldFrustum : createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
-		world.getBlocksToRenderThreaded(player.chunkX,player.chunkZ,camFrustum);
+		world.getBlocksToRenderThreaded(player.chunkX, player.chunkZ, camFrustum);
 
-			
-		
+
+
 
 
 
@@ -592,7 +592,7 @@ int main()
 			ImGui::SetNextWindowPos({ 20,15 });
 			bool open = false;
 			bool* p_open = &open;
-			ImGui::Begin("Debug Info", p_open,ImGuiWindowFlags_AlwaysAutoResize);
+			ImGui::Begin("Debug Info", p_open, ImGuiWindowFlags_AlwaysAutoResize);
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::Text("Position: x: %f, y: %f, z: %f", player.cam.position.x, player.cam.position.y, player.cam.position.z);
 			ImGui::Text("Block type to place: %s    (Change with Q and E)", BlockTypes::blockTypeToString(blockToPlace).c_str());
@@ -637,7 +637,7 @@ int main()
 	glfwTerminate();
 
 	frameRates.erase(frameRates.begin());
-	auto avgFrameRate = std::reduce(frameRates.begin(), frameRates.end()) / frameRates.size();
+	auto avgFrameRate = std::accumulate(frameRates.begin(), frameRates.end(), 0) / frameRates.size();
 	printf("Average frame rate of %d frames was %f", int(frameRates.size()), avgFrameRate);
 
 	return 0;

@@ -6,16 +6,28 @@
 #include "PerlinNoise.h"
 #include "glm/glm.hpp"
 #include "geometery.h"
-#include "Logging.h"
 #include <limits>
 #include <unordered_map>
 #include <array>
 #include <iostream>
 #include "Timer.h"
 #include "ThreadPool.h"
+#include <cstring>
 
 const int CHUNK_HEIGHT = 64;
 const int CHUNK_LENGTH = 16;
+
+constexpr int maxNumBlockToRender = 20000;
+constexpr int numFacesPerBlock = 6;
+constexpr int numTrianglesPerFace = 2;
+constexpr int numVertsPerTriangle = 3;
+constexpr int numVertsPerBlock = numFacesPerBlock * numVertsPerTriangle * numTrianglesPerFace;
+
+//X,Y,Z positions, U,V tex Coord <- Float
+//Face type and light level <- char
+constexpr int dataPerVert = (3 + 2) * sizeof(float) + (1 + 1) * sizeof(uint8_t);
+
+constexpr int totalDataPerBlock = (dataPerVert * numVertsPerBlock);
 
 #define index(x,z,y) (x)+((z)*CHUNK_LENGTH)+((y)*CHUNK_LENGTH*CHUNK_LENGTH)
 
@@ -53,21 +65,21 @@ const float cubeVertices[]{
 	 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
 	 0.5f,  0.5f,  0.5f,  0.0f, 0.0625f,
 
-	//negative y
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0625f,
-	 0.5f, -0.5f, -0.5f,  0.0625f, 0.0625f,
-	 0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
-	 0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0625f,
+	 //negative y
+	 -0.5f, -0.5f, -0.5f,  0.0f, 0.0625f,
+	  0.5f, -0.5f, -0.5f,  0.0625f, 0.0625f,
+	  0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
+	  0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
+	 -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	 -0.5f, -0.5f, -0.5f,  0.0f, 0.0625f,
 
-	//positive y
-	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f,
-	 0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
-	 0.5f,  0.5f,  0.5f,  0.0625f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  0.0625f, 0.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f
+	 //positive y
+	 -0.5f,  0.5f, -0.5f,  0.0f, 0.0625f,
+	  0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
+	  0.5f,  0.5f,  0.5f,  0.0625f, 0.0f,
+	  0.5f,  0.5f,  0.5f,  0.0625f, 0.0f,
+	 -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+	 -0.5f,  0.5f, -0.5f,  0.0f, 0.0625f
 };
 
 const float vertPositions[]{
@@ -103,21 +115,21 @@ const float vertPositions[]{
 	 0.5f, -0.5f,  0.5f,
 	 0.5f,  0.5f,  0.5f,
 
-	//negative y
-	-0.5f, -0.5f, -0.5f,
-	 0.5f, -0.5f, -0.5f,
-	 0.5f, -0.5f,  0.5f,
-	 0.5f, -0.5f,  0.5f,
-	-0.5f, -0.5f,  0.5f,
-	-0.5f, -0.5f, -0.5f,
+	 //negative y
+	 -0.5f, -0.5f, -0.5f,
+	  0.5f, -0.5f, -0.5f,
+	  0.5f, -0.5f,  0.5f,
+	  0.5f, -0.5f,  0.5f,
+	 -0.5f, -0.5f,  0.5f,
+	 -0.5f, -0.5f, -0.5f,
 
-	//positive y
-	-0.5f,  0.5f, -0.5f,
-	 0.5f,  0.5f, -0.5f,
-	 0.5f,  0.5f,  0.5f,
-	 0.5f,  0.5f,  0.5f,
-	-0.5f,  0.5f,  0.5f,
-	-0.5f,  0.5f, -0.5f,
+	 //positive y
+	 -0.5f,  0.5f, -0.5f,
+	  0.5f,  0.5f, -0.5f,
+	  0.5f,  0.5f,  0.5f,
+	  0.5f,  0.5f,  0.5f,
+	 -0.5f,  0.5f,  0.5f,
+	 -0.5f,  0.5f, -0.5f,
 
 };
 
@@ -211,7 +223,7 @@ namespace BlockTypes {
 	const BlockType Stone = 1;
 	const BlockType Dirt = 2;
 	const BlockType Planck = 3;
-	const std::array<std::string, 4> blockTypeStrings = {"Air","Stone","Dirt","Planck"};
+	const std::array<std::string, 4> blockTypeStrings = { "Air","Stone","Dirt","Planck" };
 	std::string blockTypeToString(BlockType type);
 };
 
@@ -233,12 +245,12 @@ struct BlockPosition {
 
 	friend bool operator== (const BlockPosition& b1, const BlockPosition& b2)
 	{
-		return ( (b1.x == b2.x) && (b1.y==b2.y) && (b1.z==b2.z) );
+		return ((b1.x == b2.x) && (b1.y == b2.y) && (b1.z == b2.z));
 	}
 
 	friend bool operator!= (const BlockPosition& b1, const BlockPosition& b2)
 	{
-		return ( (b1.x != b2.x) || (b1.y!=b2.y) || (b1.z!=b2.z) );
+		return ((b1.x != b2.x) || (b1.y != b2.y) || (b1.z != b2.z));
 	}
 };
 
@@ -257,7 +269,7 @@ public:
 	//this function returns a block given a block position that is global
 	Block* indexAbsolute(BlockPosition pos);
 
-	Chunk(int inX,int inZ) : x(inX), z(inZ) {
+	Chunk(int inX, int inZ) : x(inX), z(inZ) {
 		blocks.resize(CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_HEIGHT);
 	}
 
@@ -287,16 +299,18 @@ public:
 	siv::PerlinNoise perlin;
 
 	void populateChunks();
-	void populateChunk(Chunk &chunk);
+	void populateChunk(Chunk& chunk);
 
 	//randomizes seed and regenerates
 	void regenerate();
 
 	World(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
+
+		printf("maxNumBlockToRender: %d, numVertsPerBlock: %d, dataPerVert: %d, totalDataPerBlock: %d\n", maxNumBlockToRender, numVertsPerBlock, dataPerVert, totalDataPerBlock);
 		perlin = siv::PerlinNoise(seed);
 
 		//set it to size of blocks around player
-		fullWorld.resize(CHUNK_HEIGHT*CHUNK_LENGTH*CHUNK_LENGTH*(pow(renderDistance*2+1,2)));
+		fullWorld.resize(CHUNK_HEIGHT * CHUNK_LENGTH * CHUNK_LENGTH * (pow(renderDistance * 2 + 1, 2)));
 		airCulled.resize(fullWorld.size());
 		fullCulled.resize(fullWorld.size());
 		lightLevel.resize(fullWorld.size());
@@ -325,36 +339,36 @@ public:
 	uint32_t numBlocks();
 
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
-	static BlockPosition findBlock(const glm::vec3 &position);
-	
-	static void findChunk(const glm::vec3 &position, int *chunkX,int *chunkZ);
+	static BlockPosition findBlock(const glm::vec3& position);
+
+	static void findChunk(const glm::vec3& position, int* chunkX, int* chunkZ);
 
 	void removeBlock(const BlockPosition& pos);
 
-	
+
 
 
 	//gets chunk from block coords
 	//returns nullptr if it can't find chunk
-	Chunk* getChunkContainingBlock(const int& x,const int& z);
+	Chunk* getChunkContainingBlock(const int& x, const int& z);
 
-	Chunk* getChunkContainingPosition(const glm::vec3 &position);
+	Chunk* getChunkContainingPosition(const glm::vec3& position);
 	Chunk* getChunkContainingBlock(const BlockPosition& pos);
 
 	//this function tries to find a block within the worl given a block position
-	Block* getBlock(const BlockPosition &pos);
+	Block* getBlock(const BlockPosition& pos);
 
 	//gets chunk from chunk 
 	//returns nullptr if it can't find chunk
-	Chunk* getChunk(const int& x,const int& z);
+	Chunk* getChunk(const int& x, const int& z);
 
 	bool isBlockAdjacentToAir(BlockPosition pos);
 
 	int customIndex(int x, int z, int y);
-	int customIndex(const BlockPosition &);
+	int customIndex(const BlockPosition&);
 
 
-	void getBlocksToRenderThreaded(int chunkX,int chunkZ, const Frustum &camFrustum);
+	void getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum);
 
 	//~World() {
 		//for (auto& [key, chunk] : chunks)
@@ -374,10 +388,10 @@ public:
 
 
 	//ranges from 0 to 15
-	std::vector<uint8_t> lightLevel = {0};
+	std::vector<uint8_t> lightLevel = { 0 };
 
 	bool renderBlocksDirty = true;
-	
+
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
 	const uint16_t renderDistance = 6;
@@ -389,14 +403,14 @@ public:
 	static int64_t genHash(int32_t a, int32_t b);
 
 	//opposite of above
-	static void retrieveHash(int32_t *a, int32_t *b, int64_t c);
+	static void retrieveHash(int32_t* a, int32_t* b, int64_t c);
 
 	std::unordered_map<int64_t, Chunk> chunks;
 
 	unsigned int getVAO() {
 		return VAO;
 	}
-	
+
 
 
 private:

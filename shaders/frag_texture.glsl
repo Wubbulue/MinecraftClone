@@ -4,9 +4,9 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 flat in uint faceType;
+flat in uint lightLevel;
 
 uniform sampler2D textureUniform;
-uniform uint lightLevel;
 
 vec2 shiftTexCoord(in uint index, in vec2 tex){
 	int xIndex = int(mod(index,16));

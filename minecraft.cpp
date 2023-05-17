@@ -1,4 +1,5 @@
 #include "minecraft.h"
+#include <random>
 
 
 void Chunk::empty() {
@@ -8,7 +9,7 @@ void Chunk::empty() {
 	for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 		for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 			for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
-				blocks[index(x,z,y)] = block;
+				blocks[index(x, z, y)] = block;
 			}
 		}
 	}
@@ -19,26 +20,26 @@ bool Chunk::isBlockAdjacentToAir(int x, int y, int z) {
 	//must make sure we don't check outside chunk bounds
 
 	//check x adjacency
-	if ((x > 0)&&(blocks[index(x-1,z,y)].type == BlockTypes::Air)) {
+	if ((x > 0) && (blocks[index(x - 1, z, y)].type == BlockTypes::Air)) {
 		return true;
 	}
-	if ((x < (CHUNK_LENGTH-1))&&(blocks[index(x+1,z,y)].type == BlockTypes::Air)) {
+	if ((x < (CHUNK_LENGTH - 1)) && (blocks[index(x + 1, z, y)].type == BlockTypes::Air)) {
 		return true;
 	}
 
 	//check z adjacency
-	if ((z > 0)&&(blocks[index(x,z-1,y)].type == BlockTypes::Air)) {
+	if ((z > 0) && (blocks[index(x, z - 1, y)].type == BlockTypes::Air)) {
 		return true;
 	}
-	if ((z < (CHUNK_LENGTH-1))&&(blocks[index(x,z+1,y)].type == BlockTypes::Air)) {
+	if ((z < (CHUNK_LENGTH - 1)) && (blocks[index(x, z + 1, y)].type == BlockTypes::Air)) {
 		return true;
 	}
 
 	//check y adjacency
-	if ((y > 0)&&(blocks[index(x,z,y-1)].type == BlockTypes::Air)) {
+	if ((y > 0) && (blocks[index(x, z, y - 1)].type == BlockTypes::Air)) {
 		return true;
 	}
-	if ((y < (CHUNK_HEIGHT-1))&&(blocks[index(x,z,y+1)].type == BlockTypes::Air)) {
+	if ((y < (CHUNK_HEIGHT - 1)) && (blocks[index(x, z, y + 1)].type == BlockTypes::Air)) {
 		return true;
 	}
 
@@ -101,7 +102,7 @@ Block* Chunk::indexAbsolute(BlockPosition pos) {
 
 
 Box3 Chunk::getBox() {
-	return Box3(glm::vec3(x*CHUNK_LENGTH, 0.0f, z*CHUNK_LENGTH), glm::vec3((x+1)*CHUNK_LENGTH, CHUNK_HEIGHT, (z + 1) * CHUNK_LENGTH));
+	return Box3(glm::vec3(x * CHUNK_LENGTH, 0.0f, z * CHUNK_LENGTH), glm::vec3((x + 1) * CHUNK_LENGTH, CHUNK_HEIGHT, (z + 1) * CHUNK_LENGTH));
 }
 
 
@@ -113,7 +114,7 @@ int64_t World::genHash(int32_t a, int32_t b)
 
 void World::retrieveHash(int32_t* a, int32_t* b, int64_t c)
 {
-	*a = c>>32;
+	*a = c >> 32;
 	*b = c & 0xFFFFFFFF;
 }
 
@@ -127,11 +128,11 @@ void World::addChunk(int x, int z) {
 	}
 
 	//this is probably copying all of our blocks, probably inneficient TODO
-	Chunk chunk(x,z);
+	Chunk chunk(x, z);
 
 	populateChunk(chunk);
 
-	chunks.insert(std::pair<int64_t,Chunk>(hash,chunk));
+	chunks.insert(std::pair<int64_t, Chunk>(hash, chunk));
 
 }
 
@@ -201,7 +202,7 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 	if (ray.dir.x > 0.0) {
 		stepX = 1;
 		tDeltaX = 1.0f / ray.dir.x;
-		tMaxX = ((curPos.x+1) - ray_start.x) / ray.dir.x;
+		tMaxX = ((curPos.x + 1) - ray_start.x) / ray.dir.x;
 	}
 	else if (ray.dir.x < 0.0) {
 		stepX = -1;
@@ -221,7 +222,7 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 	if (ray.dir.y > 0.0) {
 		stepY = 1;
 		tDeltaY = 1.0f / ray.dir.y;
-		tMaxY = ((curPos.y+1) - ray_start.y) / ray.dir.y;
+		tMaxY = ((curPos.y + 1) - ray_start.y) / ray.dir.y;
 	}
 	else if (ray.dir.y < 0.0) {
 		stepY = -1;
@@ -240,7 +241,7 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 	if (ray.dir.z > 0.0) {
 		stepZ = 1;
 		tDeltaZ = 1.0f / ray.dir.z;
-		tMaxZ = ((curPos.z+1) - ray_start.z) / ray.dir.z;
+		tMaxZ = ((curPos.z + 1) - ray_start.z) / ray.dir.z;
 	}
 	else if (ray.dir.z < 0.0) {
 		stepZ = -1;
@@ -255,15 +256,14 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 
 
 	auto chunk = getChunkContainingBlock(curPos.x, curPos.z);
-	while (curPos.x != endPos.x  || curPos.z != endPos.z || curPos.y != endPos.y) {
+	while (curPos.x != endPos.x || curPos.z != endPos.z || curPos.y != endPos.y) {
 
 		//check y bounds TODO: this will prevent picking from rays cast outside y range, implement actual solution of trying a shorter ray
-		if ((curPos.y >= CHUNK_HEIGHT)||(curPos.y<0)) {
+		if ((curPos.y >= CHUNK_HEIGHT) || (curPos.y < 0)) {
 			return;
 		}
 
 		if (!chunk) {
-			warn("Chunk loading can't keep up");
 			return;
 		}
 
@@ -278,8 +278,8 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 
 			//check if we crossed a chunk border and rent a new chunk if we did
 			bool crossPositive = (curPos.x % CHUNK_LENGTH == 0) && (stepX > 0);
-			bool crossNegative = ((curPos.x+1) % CHUNK_LENGTH == 0) && (stepX < 0);
-			if (crossPositive||crossNegative) {
+			bool crossNegative = ((curPos.x + 1) % CHUNK_LENGTH == 0) && (stepX < 0);
+			if (crossPositive || crossNegative) {
 				chunk = getChunkContainingBlock(curPos.x, curPos.z);
 			}
 
@@ -295,8 +295,8 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 			curPos.z += stepZ;
 
 			bool crossPositive = (curPos.z % CHUNK_LENGTH == 0) && (stepZ > 0);
-			bool crossNegative = ((curPos.z+1) % CHUNK_LENGTH == 0) && (stepZ < 0);
-			if (crossPositive||crossNegative) {
+			bool crossNegative = ((curPos.z + 1) % CHUNK_LENGTH == 0) && (stepZ < 0);
+			if (crossPositive || crossNegative) {
 				chunk = getChunkContainingBlock(curPos.x, curPos.z);
 			}
 
@@ -306,7 +306,7 @@ void World::mineHoleCast(const Ray& ray, const float& length) {
 
 }
 
-BlockPosition World::findBlock(const glm::vec3 &position) {
+BlockPosition World::findBlock(const glm::vec3& position) {
 
 	//TODO: find better assert solution
 
@@ -352,16 +352,16 @@ void World::findChunk(const glm::vec3& position, int* chunkX, int* chunkZ)
 
 }
 
-Chunk* World::getChunkContainingBlock(const int& x,const int& z) {
-	
+Chunk* World::getChunkContainingBlock(const int& x, const int& z) {
+
 	int chunkX = x / CHUNK_LENGTH;
 	int chunkZ = z / CHUNK_LENGTH;
 
-	if (x < 0&&(x%16!=0)) {
+	if (x < 0 && (x % 16 != 0)) {
 		chunkX -= 1;
 	}
 
-	if (z < 0&&(z%16!=0)) {
+	if (z < 0 && (z % 16 != 0)) {
 		chunkZ -= 1;
 	}
 
@@ -369,15 +369,15 @@ Chunk* World::getChunkContainingBlock(const int& x,const int& z) {
 }
 
 Chunk* World::getChunkContainingBlock(const BlockPosition& pos) {
-	
+
 	int chunkX = pos.x / CHUNK_LENGTH;
 	int chunkZ = pos.z / CHUNK_LENGTH;
 
-	if (pos.x < 0&&(pos.x%16!=0)) {
+	if (pos.x < 0 && (pos.x % 16 != 0)) {
 		chunkX -= 1;
 	}
 
-	if (pos.z < 0&&(pos.z%16!=0)) {
+	if (pos.z < 0 && (pos.z % 16 != 0)) {
 		chunkZ -= 1;
 	}
 
@@ -476,22 +476,22 @@ bool World::isBlockAdjacentToAir(BlockPosition pos)
 
 int World::customIndex(int x, int z, int y)
 {
-	return (x)+((z)*worldLength)+((y)*worldLength*worldLength);
+	return (x)+((z)*worldLength) + ((y)*worldLength * worldLength);
 }
 
 int World::customIndex(const BlockPosition& pos) {
-	return (pos.x)+((pos.z)*worldLength)+((pos.y)*worldLength*worldLength);
+	return (pos.x) + ((pos.z) * worldLength) + ((pos.y) * worldLength * worldLength);
 }
 
-void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &camFrustum)
+void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 {
 
 	//cull obfuscated
-	if(renderBlocksDirty)
+	if (renderBlocksDirty)
 	{
 
 		renderBlocksDirty = false;
-		
+
 		//gather all blocks to operate on
 		{
 			int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
@@ -627,19 +627,19 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 		ThreadPool& pool = ThreadPool::shared_instance();
 		std::vector<std::future<void>> futures;
 
-		int chunkNum = 0,numChunkX=0,numChunkZ=0;
+		int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
 
-		for (int i = chunkX - renderDistance; i < chunkX + renderDistance+1; i++) {
+		for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
 
 			numChunkZ = 0;
-			for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance+1; j++) {
+			for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
 
 
 				float offsetX = i * CHUNK_LENGTH;
 				float offsetZ = j * CHUNK_LENGTH;
 
 
-				futures.emplace_back(pool.enqueue([chunkNum, numChunkX, numChunkZ, offsetX,offsetZ,camFrustum, i, j,this,&numBlocksToRender] {
+				futures.emplace_back(pool.enqueue([chunkNum, numChunkX, numChunkZ, offsetX, offsetZ, camFrustum, i, j, this, &numBlocksToRender] {
 					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 
 						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
@@ -691,21 +691,21 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 
 		glBindVertexArray(VAO);
 
-		// numblocks * (5 floats + 1 char) * 36 verts
-		auto bufSize = numBlocksToRender * 21 * 36;
+		// numblocks * (5 floats + 2 char) * 36 verts
+		auto bufSize = numBlocksToRender * dataPerVert * numVertsPerBlock;
 		char* buffer = new char[bufSize];
-		int chunkNum = 0,numChunkX=0,numChunkZ=0;
+		int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
 
 		int bufferWritePos = 0;
 
-		for (int i = chunkX - renderDistance; i < chunkX + renderDistance+1; i++) {
+		for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
 
 			numChunkZ = 0;
-			for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance+1; j++) {
+			for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
 
 
-				float offsetX = i * CHUNK_LENGTH;
-				float offsetZ = j * CHUNK_LENGTH;
+				int offsetX = i * CHUNK_LENGTH;
+				int offsetZ = j * CHUNK_LENGTH;
 
 
 				{
@@ -718,25 +718,26 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 
 								auto block = fullCulled.data() + customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
 
-								auto blockType = block->type;
-								if (blockType == BlockTypes::Air) {
+								if (block->type == BlockTypes::Air) {
 									continue;
 								}
 
 								const uint8_t* facesPointer = dirtFaces;
 
-								if (blockType == BlockTypes::Dirt) {
+								if (block->type == BlockTypes::Dirt) {
 									facesPointer = dirtFaces;
 								}
-								else if (blockType == BlockTypes::Stone) {
+								else if (block->type == BlockTypes::Stone) {
 									facesPointer = stoneFaces;
 								}
-								else if (blockType == BlockTypes::Planck) {
+								else if (block->type == BlockTypes::Planck) {
 									facesPointer = planckFaces;
 								}
 
 								glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
 
+								uint8_t randLightLevel = ((x + offsetX) * (z + offsetZ)) % 16;
+								// uint8_t randLightLevel = 4;
 								for (int a = 0; a < 36; a++) {
 									{
 										int index = (a * 3);
@@ -763,6 +764,8 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 									}
 									memcpy(buffer + bufferWritePos, facesPointer + a, sizeof(uint8_t));
 									bufferWritePos += sizeof(uint8_t);
+									memcpy(buffer + bufferWritePos, &randLightLevel, sizeof(uint8_t));
+									bufferWritePos += sizeof(uint8_t);
 								}
 
 							}
@@ -770,7 +773,7 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 					}
 
 
-				//}));
+					//}));
 				}
 
 				chunkNum++;
@@ -785,7 +788,7 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum &cam
 
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, bufSize, buffer);
-		glDrawArrays(GL_TRIANGLES, 0, 36*numBlocksToRender);
+		glDrawArrays(GL_TRIANGLES, 0, numVertsPerBlock * numBlocksToRender);
 
 		delete[] buffer;
 	}
@@ -818,7 +821,7 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 	if (ray.dir.x > 0.0) {
 		stepX = 1;
 		tDeltaX = 1.0f / ray.dir.x;
-		tMaxX = ((curPos.x+1) - ray_start.x) / ray.dir.x;
+		tMaxX = ((curPos.x + 1) - ray_start.x) / ray.dir.x;
 	}
 	else if (ray.dir.x < 0.0) {
 		stepX = -1;
@@ -838,7 +841,7 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 	if (ray.dir.y > 0.0) {
 		stepY = 1;
 		tDeltaY = 1.0f / ray.dir.y;
-		tMaxY = ((curPos.y+1) - ray_start.y) / ray.dir.y;
+		tMaxY = ((curPos.y + 1) - ray_start.y) / ray.dir.y;
 	}
 	else if (ray.dir.y < 0.0) {
 		stepY = -1;
@@ -857,7 +860,7 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 	if (ray.dir.z > 0.0) {
 		stepZ = 1;
 		tDeltaZ = 1.0f / ray.dir.z;
-		tMaxZ = ((curPos.z+1) - ray_start.z) / ray.dir.z;
+		tMaxZ = ((curPos.z + 1) - ray_start.z) / ray.dir.z;
 	}
 	else if (ray.dir.z < 0.0) {
 		stepZ = -1;
@@ -873,15 +876,14 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 
 
 	auto chunk = getChunkContainingBlock(curPos.x, curPos.z);
-	while (curPos.x != endPos.x  || curPos.z != endPos.z || curPos.y != endPos.y) {
+	while (curPos.x != endPos.x || curPos.z != endPos.z || curPos.y != endPos.y) {
 
 		//check y bounds TODO: this will prevent picking from rays cast outside y range, implement actual solution of trying a shorter ray
-		if ((curPos.y >= CHUNK_HEIGHT)||(curPos.y<0)) {
+		if ((curPos.y >= CHUNK_HEIGHT) || (curPos.y < 0)) {
 			return false;
 		}
 
 		if (!chunk) {
-			warn("Chunk loading can't keep up");
 			return false;
 		}
 
@@ -897,8 +899,8 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 
 			//check if we crossed a chunk border and rent a new chunk if we did
 			bool crossPositive = (curPos.x % CHUNK_LENGTH == 0) && (stepX > 0);
-			bool crossNegative = ((curPos.x+1) % CHUNK_LENGTH == 0) && (stepX < 0);
-			if (crossPositive||crossNegative) {
+			bool crossNegative = ((curPos.x + 1) % CHUNK_LENGTH == 0) && (stepX < 0);
+			if (crossPositive || crossNegative) {
 				chunk = getChunkContainingBlock(curPos.x, curPos.z);
 			}
 
@@ -914,8 +916,8 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 			curPos.z += stepZ;
 
 			bool crossPositive = (curPos.z % CHUNK_LENGTH == 0) && (stepZ > 0);
-			bool crossNegative = ((curPos.z+1) % CHUNK_LENGTH == 0) && (stepZ < 0);
-			if (crossPositive||crossNegative) {
+			bool crossNegative = ((curPos.z + 1) % CHUNK_LENGTH == 0) && (stepZ < 0);
+			if (crossPositive || crossNegative) {
 				chunk = getChunkContainingBlock(curPos.x, curPos.z);
 			}
 
@@ -954,7 +956,7 @@ bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& po
 	if (ray.dir.x > 0.0) {
 		stepX = 1;
 		tDeltaX = 1.0f / ray.dir.x;
-		tMaxX = ((curPos.x+1) - ray_start.x) / ray.dir.x;
+		tMaxX = ((curPos.x + 1) - ray_start.x) / ray.dir.x;
 	}
 	else if (ray.dir.x < 0.0) {
 		stepX = -1;
@@ -974,7 +976,7 @@ bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& po
 	if (ray.dir.y > 0.0) {
 		stepY = 1;
 		tDeltaY = 1.0f / ray.dir.y;
-		tMaxY = ((curPos.y+1) - ray_start.y) / ray.dir.y;
+		tMaxY = ((curPos.y + 1) - ray_start.y) / ray.dir.y;
 	}
 	else if (ray.dir.y < 0.0) {
 		stepY = -1;
@@ -993,7 +995,7 @@ bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& po
 	if (ray.dir.z > 0.0) {
 		stepZ = 1;
 		tDeltaZ = 1.0f / ray.dir.z;
-		tMaxZ = ((curPos.z+1) - ray_start.z) / ray.dir.z;
+		tMaxZ = ((curPos.z + 1) - ray_start.z) / ray.dir.z;
 	}
 	else if (ray.dir.z < 0.0) {
 		stepZ = -1;
@@ -1010,15 +1012,14 @@ bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& po
 
 	BlockPosition prevPos = curPos;
 	auto chunk = getChunkContainingBlock(curPos.x, curPos.z);
-	while (curPos.x != endPos.x  || curPos.z != endPos.z || curPos.y != endPos.y) {
+	while (curPos.x != endPos.x || curPos.z != endPos.z || curPos.y != endPos.y) {
 
 		//check y bounds TODO: this will prevent picking from rays cast outside y range, implement actual solution of trying a shorter ray
-		if ((curPos.y >= CHUNK_HEIGHT)||(curPos.y<0)) {
+		if ((curPos.y >= CHUNK_HEIGHT) || (curPos.y < 0)) {
 			return false;
 		}
 
 		if (!chunk) {
-			warn("Chunk loading can't keep up");
 			return false;
 		}
 
@@ -1041,8 +1042,8 @@ bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& po
 
 			//check if we crossed a chunk border and rent a new chunk if we did
 			bool crossPositive = (curPos.x % CHUNK_LENGTH == 0) && (stepX > 0);
-			bool crossNegative = ((curPos.x+1) % CHUNK_LENGTH == 0) && (stepX < 0);
-			if (crossPositive||crossNegative) {
+			bool crossNegative = ((curPos.x + 1) % CHUNK_LENGTH == 0) && (stepX < 0);
+			if (crossPositive || crossNegative) {
 				chunk = getChunkContainingBlock(curPos.x, curPos.z);
 			}
 
@@ -1058,8 +1059,8 @@ bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& po
 			curPos.z += stepZ;
 
 			bool crossPositive = (curPos.z % CHUNK_LENGTH == 0) && (stepZ > 0);
-			bool crossNegative = ((curPos.z+1) % CHUNK_LENGTH == 0) && (stepZ < 0);
-			if (crossPositive||crossNegative) {
+			bool crossNegative = ((curPos.z + 1) % CHUNK_LENGTH == 0) && (stepZ < 0);
+			if (crossPositive || crossNegative) {
 				chunk = getChunkContainingBlock(curPos.x, curPos.z);
 			}
 
@@ -1114,15 +1115,20 @@ void World::initOpenGL() {
 	//this might be waaay to much gpu memory to reserve, we will see...
 	const int maxNumBlockToRender = 20000;
 	//not sure if this is good practice to give it nullptr, just want to reserve the memory rn, will set later
-	glBufferData(GL_ARRAY_BUFFER, maxNumBlockToRender * sizeof(float) * 181, nullptr, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, maxNumBlockToRender * totalDataPerBlock, nullptr, GL_STATIC_DRAW);
 
 	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 5 * sizeof(float)+1, (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, dataPerVert, (void*)0);
 	glEnableVertexAttribArray(0);
+
 	// texture coord attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, 5 * sizeof(float)+1, (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_TRUE, dataPerVert, (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
-	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  5 * sizeof(float)+1, (void*)(5 * sizeof(float)));
+	// face type attribute
+	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, dataPerVert, (void*)(5 * sizeof(float)));
 	glEnableVertexAttribArray(2);
+
+	glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE, dataPerVert, (void*)(5 * sizeof(float) + 1));
+	glEnableVertexAttribArray(3);
 }
