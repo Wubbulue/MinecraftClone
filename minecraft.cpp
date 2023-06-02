@@ -483,6 +483,150 @@ int World::customIndex(const BlockPosition& pos) {
 	return (pos.x) + ((pos.z) * worldLength) + ((pos.y) * worldLength * worldLength);
 }
 
+
+
+BlockPosition absoluteToRenderSpace(BlockPosition& pos) {
+
+	return { 1,1,1 };
+}
+
+BlockPosition renderSpaceToAbsoluteSpace(BlockPosition& pos) {
+
+	return { 1,1,1 };
+}
+
+void World::propogateLight(BlockPosition& pos) {
+
+
+	//TODO: out of bounds checking
+	auto startingLightLevel = lightLevel[customIndex(pos)];
+	std::queue<BlockPosition> toVisit;
+
+	//this being full size might be a waste?
+	std::unordered_set<BlockPosition> alreadyVisited;
+	alreadyVisited.insert(pos);
+	BlockPosition tempPos;
+
+	uint8_t* lightPtr;
+	uint8_t newLightLevel = startingLightLevel - 1;
+
+	tempPos = {pos.x,pos.y,pos.z-1};
+	lightPtr = lightLevel.data() + customIndex(tempPos);
+	if (*lightPtr < newLightLevel) {
+		toVisit.push(tempPos);
+		*lightPtr = newLightLevel;
+	}
+
+	tempPos = {pos.x,pos.y,pos.z+1};
+	lightPtr = lightLevel.data() + customIndex(tempPos);
+	if (*lightPtr < newLightLevel) {
+		toVisit.push(tempPos);
+		*lightPtr = newLightLevel;
+	}
+
+	tempPos = {pos.x,pos.y-1,pos.z};
+	lightPtr = lightLevel.data() + customIndex(tempPos);
+	if (*lightPtr < newLightLevel) {
+		toVisit.push(tempPos);
+		*lightPtr = newLightLevel;
+	}
+
+	tempPos = {pos.x,pos.y+1,pos.z};
+	lightPtr = lightLevel.data() + customIndex(tempPos);
+	if (*lightPtr < newLightLevel) {
+		toVisit.push(tempPos);
+		*lightPtr = newLightLevel;
+	}
+
+	tempPos = {pos.x-1,pos.y,pos.z};
+	lightPtr = lightLevel.data() + customIndex(tempPos);
+	if (*lightPtr < newLightLevel) {
+		toVisit.push(tempPos);
+		*lightPtr = newLightLevel;
+	}
+
+	tempPos = {pos.x+1,pos.y,pos.z};
+	lightPtr = lightLevel.data() + customIndex(tempPos);
+	if (*lightPtr < newLightLevel) {
+		toVisit.push(tempPos);
+		*lightPtr = newLightLevel;
+	}
+
+
+
+
+
+	while (!toVisit.empty()) {
+		BlockPosition blockToVisit = toVisit.front();
+		toVisit.pop();
+
+		if (alreadyVisited.count(blockToVisit)) {
+			//If we have already visited this, then don't keep looking
+			continue;
+		}
+
+		startingLightLevel = lightLevel[customIndex(blockToVisit)];
+		if (startingLightLevel <= 1) {
+			//we can't spread a light level of 0
+			continue;
+		}
+
+		alreadyVisited.insert(blockToVisit);
+
+		newLightLevel = startingLightLevel - 1;
+
+		//Otherwise, spread the light!
+		tempPos = {blockToVisit.x,blockToVisit.y,blockToVisit.z-1};
+		lightPtr = lightLevel.data() + customIndex(tempPos);
+		if (*lightPtr < newLightLevel) {
+			toVisit.push(tempPos);
+			*lightPtr = newLightLevel;
+		}
+
+		tempPos = {blockToVisit.x,blockToVisit.y,blockToVisit.z+1};
+		lightPtr = lightLevel.data() + customIndex(tempPos);
+		if (*lightPtr < newLightLevel) {
+			toVisit.push(tempPos);
+			*lightPtr = newLightLevel;
+		}
+
+		tempPos = {blockToVisit.x,blockToVisit.y-1,blockToVisit.z};
+		lightPtr = lightLevel.data() + customIndex(tempPos);
+		if (*lightPtr < newLightLevel) {
+			toVisit.push(tempPos);
+			*lightPtr = newLightLevel;
+		}
+
+		tempPos = {blockToVisit.x,blockToVisit.y+1,blockToVisit.z};
+		lightPtr = lightLevel.data() + customIndex(tempPos);
+		if (*lightPtr < newLightLevel) {
+			toVisit.push(tempPos);
+			*lightPtr = newLightLevel;
+		}
+
+		tempPos = {blockToVisit.x-1,blockToVisit.y,blockToVisit.z};
+		lightPtr = lightLevel.data() + customIndex(tempPos);
+		if (*lightPtr < newLightLevel) {
+			toVisit.push(tempPos);
+			*lightPtr = newLightLevel;
+		}
+
+		tempPos = {blockToVisit.x+1,blockToVisit.y,blockToVisit.z};
+		lightPtr = lightLevel.data() + customIndex(tempPos);
+		if (*lightPtr < newLightLevel) {
+			toVisit.push(tempPos);
+			*lightPtr = newLightLevel;
+		}
+
+	}
+	
+	
+
+
+
+
+}
+
 void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 {
 
@@ -601,7 +745,7 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 								}
 							}
 						}
-					}));
+						}));
 
 
 					chunkNum++;
@@ -667,7 +811,7 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 							}
 						}
 					}
-				}));
+					}));
 
 				chunkNum++;
 				numChunkZ++;
@@ -683,20 +827,11 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 		}
 	}
 
-	//pack data into our vbo
+	//progate light
 	{
-
-		ThreadPool& pool = ThreadPool::shared_instance();
-		std::vector<std::future<void>> futures;
-
-		glBindVertexArray(VAO);
-
-		// numblocks * (5 floats + 2 char) * 36 verts
-		auto bufSize = numBlocksToRender * dataPerVert * numVertsPerBlock;
-		char* buffer = new char[bufSize];
+		
+		std::fill(lightLevel.begin(), lightLevel.end(), 3);
 		int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
-
-		int bufferWritePos = 0;
 
 		for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
 
@@ -710,64 +845,18 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 
 				{
 
-
 					for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 
 						for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+								BlockPosition relativePos = { x + (numChunkX * CHUNK_LENGTH), y,  z + (numChunkZ * CHUNK_LENGTH)};
+								auto ind = customIndex(relativePos);
+								auto block = fullWorld.data() + ind;
+								if (block->type == BlockTypes::Planck) {
+									lightLevel[ind] = 15;
+									propogateLight(relativePos);
 
-								auto block = fullCulled.data() + customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
-
-								if (block->type == BlockTypes::Air) {
-									continue;
 								}
-
-								const uint8_t* facesPointer = dirtFaces;
-
-								if (block->type == BlockTypes::Dirt) {
-									facesPointer = dirtFaces;
-								}
-								else if (block->type == BlockTypes::Stone) {
-									facesPointer = stoneFaces;
-								}
-								else if (block->type == BlockTypes::Planck) {
-									facesPointer = planckFaces;
-								}
-
-								glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
-
-								uint8_t randLightLevel = ((x + offsetX) * (z + offsetZ)) % 16;
-								// uint8_t randLightLevel = 4;
-								for (int a = 0; a < 36; a++) {
-									{
-										int index = (a * 3);
-										float current = vertPositions[index] + center.x;
-										memcpy(buffer + bufferWritePos, &current, sizeof(float));
-										bufferWritePos += sizeof(float);
-										index++;
-
-										current = vertPositions[index] + center.y;
-										memcpy(buffer + bufferWritePos, &current, sizeof(float));
-										bufferWritePos += sizeof(float);
-										index++;
-
-										current = vertPositions[index] + center.z;
-										memcpy(buffer + bufferWritePos, &current, sizeof(float));
-										bufferWritePos += sizeof(float);
-
-									}
-
-									for (int b = 0; b < 2; b++) {
-										int index = b + (a * 2);
-										memcpy(buffer + bufferWritePos, texPositions + index, sizeof(float));
-										bufferWritePos += sizeof(float);
-									}
-									memcpy(buffer + bufferWritePos, facesPointer + a, sizeof(uint8_t));
-									bufferWritePos += sizeof(uint8_t);
-									memcpy(buffer + bufferWritePos, &randLightLevel, sizeof(uint8_t));
-									bufferWritePos += sizeof(uint8_t);
-								}
-
 							}
 						}
 					}
@@ -785,12 +874,117 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 
 		}
 
+		//pack data into our vbo
+		{
 
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, bufSize, buffer);
-		glDrawArrays(GL_TRIANGLES, 0, numVertsPerBlock * numBlocksToRender);
+			ThreadPool& pool = ThreadPool::shared_instance();
+			std::vector<std::future<void>> futures;
 
-		delete[] buffer;
+			glBindVertexArray(VAO);
+
+			// numblocks * (5 floats + 2 char) * 36 verts
+			auto bufSize = numBlocksToRender * dataPerVert * numVertsPerBlock;
+			char* buffer = new char[bufSize];
+			int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
+
+			int bufferWritePos = 0;
+
+			for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
+
+				numChunkZ = 0;
+				for (int j = chunkZ - renderDistance; j < chunkZ + renderDistance + 1; j++) {
+
+
+					int offsetX = i * CHUNK_LENGTH;
+					int offsetZ = j * CHUNK_LENGTH;
+
+
+					{
+
+
+						for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
+
+							for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
+								for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
+
+									auto ind = customIndex(x + (numChunkX * CHUNK_LENGTH), z + (numChunkZ * CHUNK_LENGTH), y);
+									auto block = fullCulled.data() + ind;
+
+									if (block->type == BlockTypes::Air) {
+										continue;
+									}
+
+									const uint8_t* facesPointer = dirtFaces;
+
+									if (block->type == BlockTypes::Dirt) {
+										facesPointer = dirtFaces;
+									}
+									else if (block->type == BlockTypes::Stone) {
+										facesPointer = stoneFaces;
+									}
+									else if (block->type == BlockTypes::Planck) {
+										facesPointer = planckFaces;
+									}
+
+									glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
+
+									//uint8_t randLightLevel = ((x + offsetX) * (z + offsetZ)) % 16;
+									// uint8_t randLightLevel = 4;
+									uint8_t randLightLevel = lightLevel[ind];
+									for (int a = 0; a < 36; a++) {
+										{
+											int index = (a * 3);
+											float current = vertPositions[index] + center.x;
+											memcpy(buffer + bufferWritePos, &current, sizeof(float));
+											bufferWritePos += sizeof(float);
+											index++;
+
+											current = vertPositions[index] + center.y;
+											memcpy(buffer + bufferWritePos, &current, sizeof(float));
+											bufferWritePos += sizeof(float);
+											index++;
+
+											current = vertPositions[index] + center.z;
+											memcpy(buffer + bufferWritePos, &current, sizeof(float));
+											bufferWritePos += sizeof(float);
+
+										}
+
+										for (int b = 0; b < 2; b++) {
+											int index = b + (a * 2);
+											memcpy(buffer + bufferWritePos, texPositions + index, sizeof(float));
+											bufferWritePos += sizeof(float);
+										}
+										memcpy(buffer + bufferWritePos, facesPointer + a, sizeof(uint8_t));
+										bufferWritePos += sizeof(uint8_t);
+										memcpy(buffer + bufferWritePos, &randLightLevel, sizeof(uint8_t));
+										bufferWritePos += sizeof(uint8_t);
+									}
+
+								}
+							}
+						}
+
+
+						//}));
+					}
+
+					chunkNum++;
+					numChunkZ++;
+
+				}
+
+				numChunkX++;
+
+			}
+
+
+			glBindBuffer(GL_ARRAY_BUFFER, VBO);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, bufSize, buffer);
+			glDrawArrays(GL_TRIANGLES, 0, numVertsPerBlock * numBlocksToRender);
+
+			delete[] buffer;
+		}
 	}
 }
 

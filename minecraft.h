@@ -8,6 +8,7 @@
 #include "geometery.h"
 #include <limits>
 #include <unordered_map>
+#include <unordered_set>
 #include <array>
 #include <iostream>
 #include "Timer.h"
@@ -254,6 +255,23 @@ struct BlockPosition {
 	}
 };
 
+template <>
+struct std::hash<BlockPosition>
+{
+	std::size_t operator()(const BlockPosition& b) const
+	{
+		using std::hash;
+
+		// Compute individual hash values for first,
+		// second and third and combine them using XOR
+		// and bit shifting:
+
+		return ((hash<int>()(b.x)
+			^ (hash<int>()(b.y) << 1)) >> 1)
+			^ (hash<int>()(b.z) << 1);
+	}
+};
+
 class Chunk {
 public:
 
@@ -313,7 +331,7 @@ public:
 		fullWorld.resize(CHUNK_HEIGHT * CHUNK_LENGTH * CHUNK_LENGTH * (pow(renderDistance * 2 + 1, 2)));
 		airCulled.resize(fullWorld.size());
 		fullCulled.resize(fullWorld.size());
-		lightLevel.resize(fullWorld.size());
+		lightLevel = std::vector<uint8_t>(fullWorld.size(),0);
 	}
 
 	void initOpenGL();
@@ -368,6 +386,13 @@ public:
 	int customIndex(const BlockPosition&);
 
 
+	//This function translates a position from aboslute space to render space, like full culled
+	BlockPosition absoluteToRenderSpace(BlockPosition& pos);
+
+	//This function translates a position from render space to absolute space
+	BlockPosition renderSpaceToAbsoluteSpace(BlockPosition& pos);
+
+	void propogateLight(BlockPosition &pos);
 	void getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum);
 
 	//~World() {
@@ -378,6 +403,7 @@ public:
 	//}
 
 	//this is a vector of all blocks around the player which is updated by the getBlocksToRender function to save it from being allocated every frame
+	//It is organized x,z,y
 	std::vector<Block> fullWorld;
 
 	//these are the blocks that should be rendered on each frame
