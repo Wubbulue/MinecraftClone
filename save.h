@@ -16,7 +16,7 @@
 typedef float precision;
 //data offset for camera, three floats in position vector, and 2 floats for yaw and pitch
 const int cameraDataOffset = sizeof(precision) * 5;
-const bool overwriteFile = true;
+const bool overwriteFile = false;
 
 //data offset for one chunk
 

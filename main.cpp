@@ -177,6 +177,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 			auto block = world.getBlock(pos);
 			block->type = BlockTypes::Air;
 			world.renderBlocksDirty = true;
+			auto chunk = world.getChunkContainingBlock(pos);
+			saver->writeChunk(*chunk);
 		}
 
 	}
@@ -189,6 +191,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 			auto block = world.getBlock(pos);
 			block->type = blockToPlace;
 			world.renderBlocksDirty = true;
+			auto chunk = world.getChunkContainingBlock(pos);
+			saver->writeChunk(*chunk);
 		}
 
 
@@ -279,9 +283,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	//         }
 	// }
 	else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-		glfwSetWindowShouldClose(window, true);
 		saver->writePosition();
 		saver->closeWorld();
+		glfwSetWindowShouldClose(window, true);
 	}
 	//move block place type left
 	else if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
