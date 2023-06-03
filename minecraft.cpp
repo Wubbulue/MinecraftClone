@@ -830,7 +830,7 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 	//progate light
 	{
 		
-		std::fill(lightLevel.begin(), lightLevel.end(), 3);
+		std::fill(lightLevel.begin(), lightLevel.end(), passiveLightLevel);
 		int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
 
 		for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {

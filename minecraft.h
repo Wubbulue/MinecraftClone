@@ -415,6 +415,7 @@ public:
 
 	//ranges from 0 to 15
 	std::vector<uint8_t> lightLevel = { 0 };
+	const uint8_t passiveLightLevel = 3;
 
 	bool renderBlocksDirty = true;
 
