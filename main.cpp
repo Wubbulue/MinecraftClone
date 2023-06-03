@@ -177,6 +177,9 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 			auto block = world.getBlock(pos);
 			block->type = BlockTypes::Air;
 			world.renderBlocksDirty = true;
+			world.frustumCullDirty = true;
+			world.lightDirty = true;
+			world.vboDirty = true;
 			auto chunk = world.getChunkContainingBlock(pos);
 			saver->writeChunk(*chunk);
 		}
@@ -191,6 +194,9 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 			auto block = world.getBlock(pos);
 			block->type = blockToPlace;
 			world.renderBlocksDirty = true;
+			world.frustumCullDirty = true;
+			world.lightDirty = true;
+			world.vboDirty = true;
 			auto chunk = world.getChunkContainingBlock(pos);
 			saver->writeChunk(*chunk);
 		}
@@ -222,6 +228,8 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 	lastX = xpos;
 	lastY = ypos;
 	player.cam.ProcessMouseMovement(xoffset, yoffset);
+	world.frustumCullDirty = true;
+	world.vboDirty = true;
 	updateBlockPlayerLookingAt();
 
 
@@ -517,6 +525,8 @@ int main()
 
 		if (player.checkPosition(window, elapsedTime)) {
 			//player could be looking at new block after camera movement
+			world.frustumCullDirty = true;
+			world.vboDirty = true;
 			updateBlockPlayerLookingAt();
 			chunkManager->checkNewChunk();
 		}

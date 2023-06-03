@@ -138,7 +138,7 @@ void worldSaver::writeChunk(const Chunk &chunk) {
 
 void ChunkManager::initWorld()
 {
-	auto r = world->renderDistance;
+	auto r = renderDistance;
 	for (int i = r; i >= -r; i--) {
 		for (int j = r; j >= -r; j--) {
 			loadChunk(player->chunkX+i, player->chunkZ+j);
@@ -152,7 +152,7 @@ void ChunkManager::checkNewChunk()
 	int chunkDiffZ = player->chunkZ-oldChunkZ;
 
 	if (chunkDiffX != 0 || chunkDiffZ != 0) {
-		auto r = world->renderDistance;
+		auto r = renderDistance;
 		std::set<int64_t> expectedChunks;
 		std::set<int64_t> currentChunks;
 
@@ -214,6 +214,9 @@ void ChunkManager::loadChunk(const int& chunkX, const int& chunkZ)
 		}
 		world->chunks.insert(std::pair<int64_t,Chunk>(hash,chunk));
 		world->renderBlocksDirty = true;
+		world->frustumCullDirty = true;
+		world->lightDirty = true;
+		world->vboDirty = true;
 	}
 
 }
@@ -225,6 +228,9 @@ void ChunkManager::unloadChunk(const int& chunkX, const int& chunkZ)
 	auto hash = World::genHash(chunkX, chunkZ);
 	world->chunks.erase(hash);
 	world->renderBlocksDirty = true;
+	world->frustumCullDirty = true;
+	world->lightDirty = true;
+	world->vboDirty = true;
 
 }
 
@@ -232,6 +238,9 @@ void ChunkManager::unloadChunk(const int64_t& hash)
 {
 	world->chunks.erase(hash);
 	world->renderBlocksDirty = true;
+	world->frustumCullDirty = true;
+	world->lightDirty = true;
+	world->vboDirty = true;
 }
 
 

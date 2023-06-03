@@ -6,6 +6,7 @@ bool Player::checkPosition(GLFWwindow* window, float deltaTime)
 
 	auto moved = cam.moveCamera(window, deltaTime);
 	if (moved) {
+		
 		position = cam.position;
 		recalcChunkPos();
 	}

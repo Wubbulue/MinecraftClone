@@ -10,7 +10,7 @@ namespace CAM_DEFAULTS {
 
 	const float YAW = -90.0f;
 	const float PITCH = 0.0f;
-	const float SPEED = 10.0f;
+	const float SPEED = 30.0f;
 	const float SENSITIVITY = 0.1f;
 	const float ZOOM = 45.0f;
 	const glm::vec3 POSITION(0.0f, 50.0f, 0.0f);

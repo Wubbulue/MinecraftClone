@@ -15,14 +15,18 @@
 #include "ThreadPool.h"
 #include <cstring>
 
-const int CHUNK_HEIGHT = 64;
-const int CHUNK_LENGTH = 16;
+constexpr int CHUNK_HEIGHT = 64;
+constexpr int CHUNK_LENGTH = 16;
+#define INVALID_LIGHT_LEVEL 16
 
 constexpr int maxNumBlockToRender = 20000;
 constexpr int numFacesPerBlock = 6;
+constexpr int numVertsPerFace = 6;
 constexpr int numTrianglesPerFace = 2;
 constexpr int numVertsPerTriangle = 3;
 constexpr int numVertsPerBlock = numFacesPerBlock * numVertsPerTriangle * numTrianglesPerFace;
+constexpr uint16_t renderDistance = 6;
+constexpr int renderSpaceSideLength = (renderDistance * 2 + 1) * CHUNK_LENGTH;
 
 //X,Y,Z positions, U,V tex Coord <- Float
 //Face type and light level <- char
@@ -32,59 +36,8 @@ constexpr int totalDataPerBlock = (dataPerVert * numVertsPerBlock);
 
 #define index(x,z,y) (x)+((z)*CHUNK_LENGTH)+((y)*CHUNK_LENGTH*CHUNK_LENGTH)
 
-
-const float cubeVertices[]{
-	//negative z
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-	 0.5f, -0.5f, -0.5f,  0.0625f, 0.0f,
-	 0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
-	 0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-	//positive z
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	 0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  0.0625f, 0.0625f,
-	 0.5f,  0.5f,  0.5f,  0.0625f, 0.0625f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 0.0625f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-	//negative x
-	-0.5f,  0.5f,  0.5f,  0.0625f, 0.0625f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 0.0625f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
-	-0.5f,  0.5f,  0.5f,  0.0625f, 0.0625f,
-
-	//positve x
-	 0.5f,  0.5f,  0.5f,  0.0f, 0.0625f,
-	 0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
-	 0.5f, -0.5f, -0.5f,  0.0625f, 0.0f,
-	 0.5f, -0.5f, -0.5f,  0.0625f, 0.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f, 0.0625f,
-
-	 //negative y
-	 -0.5f, -0.5f, -0.5f,  0.0f, 0.0625f,
-	  0.5f, -0.5f, -0.5f,  0.0625f, 0.0625f,
-	  0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
-	  0.5f, -0.5f,  0.5f,  0.0625f, 0.0f,
-	 -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	 -0.5f, -0.5f, -0.5f,  0.0f, 0.0625f,
-
-	 //positive y
-	 -0.5f,  0.5f, -0.5f,  0.0f, 0.0625f,
-	  0.5f,  0.5f, -0.5f,  0.0625f, 0.0625f,
-	  0.5f,  0.5f,  0.5f,  0.0625f, 0.0f,
-	  0.5f,  0.5f,  0.5f,  0.0625f, 0.0f,
-	 -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-	 -0.5f,  0.5f, -0.5f,  0.0f, 0.0625f
-};
-
 const float vertPositions[]{
-	//negative z
+	//negative z face
 	-0.5f, -0.5f, -0.5f,
 	 0.5f, -0.5f, -0.5f,
 	 0.5f,  0.5f, -0.5f,
@@ -92,7 +45,7 @@ const float vertPositions[]{
 	-0.5f,  0.5f, -0.5f,
 	-0.5f, -0.5f, -0.5f,
 
-	//positive z
+	//positive z face
 	-0.5f, -0.5f,  0.5f,
 	 0.5f, -0.5f,  0.5f,
 	 0.5f,  0.5f,  0.5f,
@@ -100,7 +53,7 @@ const float vertPositions[]{
 	-0.5f,  0.5f,  0.5f,
 	-0.5f, -0.5f,  0.5f,
 
-	//negative x
+	//negative x face
 	-0.5f,  0.5f,  0.5f,
 	-0.5f,  0.5f, -0.5f,
 	-0.5f, -0.5f, -0.5f,
@@ -108,7 +61,7 @@ const float vertPositions[]{
 	-0.5f, -0.5f,  0.5f,
 	-0.5f,  0.5f,  0.5f,
 
-	//positve x
+	//positve x face
 	 0.5f,  0.5f,  0.5f,
 	 0.5f,  0.5f, -0.5f,
 	 0.5f, -0.5f, -0.5f,
@@ -116,7 +69,7 @@ const float vertPositions[]{
 	 0.5f, -0.5f,  0.5f,
 	 0.5f,  0.5f,  0.5f,
 
-	 //negative y
+	 //negative y face
 	 -0.5f, -0.5f, -0.5f,
 	  0.5f, -0.5f, -0.5f,
 	  0.5f, -0.5f,  0.5f,
@@ -124,7 +77,7 @@ const float vertPositions[]{
 	 -0.5f, -0.5f,  0.5f,
 	 -0.5f, -0.5f, -0.5f,
 
-	 //positive y
+	 //positive y face
 	 -0.5f,  0.5f, -0.5f,
 	  0.5f,  0.5f, -0.5f,
 	  0.5f,  0.5f,  0.5f,
@@ -225,6 +178,7 @@ namespace BlockTypes {
 	const BlockType Dirt = 2;
 	const BlockType Planck = 3;
 	const std::array<std::string, 4> blockTypeStrings = { "Air","Stone","Dirt","Planck" };
+	const std::array<int, 4> emitsLight = {0,0,0,15};
 	std::string blockTypeToString(BlockType type);
 };
 
@@ -328,10 +282,14 @@ public:
 		perlin = siv::PerlinNoise(seed);
 
 		//set it to size of blocks around player
-		fullWorld.resize(CHUNK_HEIGHT * CHUNK_LENGTH * CHUNK_LENGTH * (pow(renderDistance * 2 + 1, 2)));
+		fullWorld.resize(CHUNK_HEIGHT * renderSpaceSideLength * renderSpaceSideLength);
 		airCulled.resize(fullWorld.size());
 		fullCulled.resize(fullWorld.size());
 		lightLevel = std::vector<uint8_t>(fullWorld.size(),0);
+		//renderBuffer.resize(fullWorld.size());
+
+		//TODO: i don't really know how big this buffer needs to be, this is a guess...
+		renderBuffer.resize(5000000);
 	}
 
 	void initOpenGL();
@@ -345,8 +303,6 @@ public:
 		cleanOpenGL();
 	}
 
-	//will only currently work for rays cast inside world bounds 
-	void mineHoleCast(const Ray& ray, const float& length);
 
 	//traverses until a solid block is found. If none, returns false
 	bool findFirstSolid(const Ray& ray, const float& length, BlockPosition& pos);
@@ -385,6 +341,8 @@ public:
 	int customIndex(int x, int z, int y);
 	int customIndex(const BlockPosition&);
 
+	//Check if a block position in render space is inside bounds
+	bool insideRenderSpace(BlockPosition& pos);
 
 	//This function translates a position from aboslute space to render space, like full culled
 	BlockPosition absoluteToRenderSpace(BlockPosition& pos);
@@ -412,16 +370,26 @@ public:
 	//these are the blocks that should be rendered on each frame
 	std::vector<Block> fullCulled;
 
+	std::vector<char> renderBuffer;
+
 
 	//ranges from 0 to 15
 	std::vector<uint8_t> lightLevel = { 0 };
-	const uint8_t passiveLightLevel = 3;
+	const uint8_t passiveLightLevel = 2;
+
+	std::atomic_int numBlocksToRender = 0;
+
+    uint32_t numFacesToRender = 0;
 
 	bool renderBlocksDirty = true;
+	bool frustumCullDirty = true;
+	bool lightDirty = true;
+	bool vboDirty = true;
+
+	const bool alwaysRender = true;
 
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
-	const uint16_t renderDistance = 6;
 	const int worldLength = CHUNK_LENGTH * (2 * renderDistance + 1);
 	void addChunk(int x, int z);
 
