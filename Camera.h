@@ -37,9 +37,6 @@ public:
 	Camera();
 
 
-	//check user input and move camera accordingly, if camera is moved returns true
-	bool moveCamera(GLFWwindow* window,float deltaTime);
-
 	//recalculate camera direction vector based on yaw and pitch
 	void updateCameraVectors();
 

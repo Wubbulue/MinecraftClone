@@ -47,7 +47,7 @@ worldSaver::worldSaver(const std::string& inFile, Player *inPlayer) : player(inP
 		file.read((char*)&tempPos.x, sizeof(precision));
 		file.read((char*)&tempPos.y, sizeof(precision));
 		file.read((char*)&tempPos.z, sizeof(precision));
-		player->movePlayer(tempPos);
+		player->setPosition(tempPos);
 
 		file.read((char*)&player->cam.Yaw, sizeof(precision));
 		file.read((char*)&player->cam.Pitch, sizeof(precision));

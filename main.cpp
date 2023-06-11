@@ -313,6 +313,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			blockToPlace++;
 		}
 	}
+	//Toggle between walk mode and fly mode
+	else if (key == GLFW_KEY_M && action == GLFW_PRESS) {
+		player.walkMode = !player.walkMode;
+	}
 }
 
 //relatively rotates something around a point
@@ -523,7 +527,8 @@ int main()
 		lastTime = timeValue;
 		frameRates.push_back(frameRate);
 
-		if (player.checkPosition(window, elapsedTime)) {
+		player.computeMovementVelocity(window);
+		if (player.tick(elapsedTime)) {
 			//player could be looking at new block after camera movement
 			world.frustumCullDirty = true;
 			world.vboDirty = true;
@@ -618,6 +623,7 @@ int main()
 			else {
 				ImGui::Text("Player is not looking at block");
 			}
+			ImGui::Text(player.walkMode ? "Walk mode" : "Fly mode");
 			ImGui::End();
 
 			ImGui::Render();

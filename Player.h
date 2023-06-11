@@ -19,17 +19,33 @@ public:
 
 	int chunkX = 0, chunkZ = 0;
 
-	bool checkPosition(GLFWwindow* window,float deltaTime);
 
-	void movePlayer(const glm::vec3 &inPos);
+	//Based on input state from the window, computes movement velocity
+	void computeMovementVelocity(GLFWwindow* window);
 
-	float MovementSpeed =  10.0f;
+	void setPosition(const glm::vec3& inPos);
+
+	//Moves player based on velocity and delta time
+	bool tick(float deltaTime);
+
+	bool walkMode = false;
+
 
 private:
-	glm::vec3 position = glm::vec3(0.0f,0.0f,0.0f);
+	//This position exists at the player's head
+	glm::vec3 position = CAM_DEFAULTS::POSITION;
+
+	//this is velocity coming from the world, like gravity or explosion
+	glm::vec3 physics_velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	//this is velocity originated from player input, like wasd
+	glm::vec3 movement_velocity = glm::vec3(0.0f, 0.0f, 0.0f);
 
 	//this function calculates chunkx and chunkZ for the player
 	void recalcChunkPos();
+
+	const float FLY_SPEED = 30.0f;
+
 
 };
 
