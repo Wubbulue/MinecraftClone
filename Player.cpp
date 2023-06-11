@@ -43,6 +43,9 @@ void Player::recalcChunkPos()
 }
 
 bool Player::tick(float deltaTime) {
+    if (walkMode) {
+        physics_velocity += gravity * deltaTime;
+    }
     const glm::vec3 posDifference = (physics_velocity+movement_velocity) * deltaTime; // adjust accordingly
     if (posDifference == glm::vec3(0.0f, 0.0f, 0.0f)) {
         return false;

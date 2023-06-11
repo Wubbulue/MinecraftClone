@@ -316,6 +316,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	//Toggle between walk mode and fly mode
 	else if (key == GLFW_KEY_M && action == GLFW_PRESS) {
 		player.walkMode = !player.walkMode;
+		if (!player.walkMode) {
+			player.physics_velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+		}
 	}
 }
 
