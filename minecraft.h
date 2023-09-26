@@ -299,9 +299,9 @@ public:
 		glDeleteBuffers(1, &VBO);
 	}
 
-	~World() {
-		cleanOpenGL();
-	}
+	//~World() {
+	//	cleanOpenGL();
+	//}
 
 
 	//traverses until a solid block is found. If none, returns false
