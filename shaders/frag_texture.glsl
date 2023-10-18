@@ -18,12 +18,16 @@ vec2 shiftTexCoord(in uint index, in vec2 tex){
 
 void main()
 {
-	uint otherLightLevel = uint(10);
-	vec2 finalTex;
-	finalTex = shiftTexCoord(faceType,TexCoord);
+	
 	float lightFloat = (float(lightLevel))/15;
+	vec2 finalTex;
+	vec3 lightColor = vec3(0.2,0.1,0.0);
+	lightColor = normalize(lightColor);
+	lightColor*=lightFloat;
+	finalTex = shiftTexCoord(faceType,TexCoord);
+	
 	
 	vec4 preDarken = texture(textureUniform, finalTex);
-	FragColor = vec4(preDarken.r*lightFloat,preDarken.g*lightFloat,preDarken.b*lightFloat,preDarken.a);
+	FragColor = vec4(preDarken.rgb*lightColor,preDarken.a);
 
 }

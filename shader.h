@@ -17,11 +17,81 @@ class Shader
 {
 public:
 	unsigned int ID;
+	inline static unsigned int currentUsingID;
 	std::string name;
 	// constructor generates the shader on the fly
 	// ------------------------------------------------------------------------
-	Shader(const char* vertexPath, const char* fragmentPath, std::string inName = "unnamed") : name(inName)
+	Shader(std::string vertexPathIn, std::string fragmentPathIn, std::string inName = "unnamed") : vertexPath(vertexPathIn), fragmentPath(fragmentPathIn), name(inName)
 	{
+		buildShader();
+	}
+
+	//Hot reloads this current shader
+	void hotReload() {
+		unsigned int oldID = ID;
+
+		//Delete old shader
+		glDeleteProgram(oldID);
+
+		buildShader();
+
+		if (currentUsingID == oldID) {
+			use();
+		}
+
+	}
+
+
+	// activate the shader
+	// ------------------------------------------------------------------------
+	void use()
+	{
+		currentUsingID = ID;
+		glUseProgram(ID);
+	}
+	// utility uniform functions
+	// ------------------------------------------------------------------------
+	void setBool(const std::string& name, bool value) const
+	{
+		glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
+	}
+	// ------------------------------------------------------------------------
+	void setInt(const std::string& name, int value) const
+	{
+		glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
+	}
+	// ------------------------------------------------------------------------
+	void setUint(const std::string& name, unsigned int value) const
+	{
+		glUniform1ui(glGetUniformLocation(ID, name.c_str()), value);
+	}
+	// ------------------------------------------------------------------------
+	void setFloat(const std::string& name, float value) const
+	{
+		int location = glGetUniformLocation(ID, name.c_str());
+		glUniform1f(location, value);
+	}
+	// ------------------------------------------------------------------------
+	void setMat4(const std::string& name, glm::mat4 value) const
+	{
+		int location = glGetUniformLocation(ID, name.c_str());
+		glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
+	}
+	// ------------------------------------------------------------------------
+	void setVec3(const std::string& name, glm::vec3 value) const {
+		glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, glm::value_ptr(value));
+	}
+	
+
+private:
+
+	std::string vertexPath;
+	std::string fragmentPath;
+	// utility function for checking shader compilation/linking errors.
+	// ------------------------------------------------------------------------
+
+	void buildShader() {
+
 		// 1. retrieve the vertex/fragment source code from filePath
 		std::string vertexCode;
 		std::string fragmentCode;
@@ -71,52 +141,13 @@ public:
 		glLinkProgram(ID);
 		checkCompileErrors(ID, "PROGRAM");
 		// delete the shaders as they're linked into our program now and no longer necessary
+		glDetachShader(ID, vertex);
+		glDetachShader(ID, fragment);
 		glDeleteShader(vertex);
 		glDeleteShader(fragment);
-	}
-	// activate the shader
-	// ------------------------------------------------------------------------
-	void use()
-	{
-		glUseProgram(ID);
-	}
-	// utility uniform functions
-	// ------------------------------------------------------------------------
-	void setBool(const std::string& name, bool value) const
-	{
-		glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
-	}
-	// ------------------------------------------------------------------------
-	void setInt(const std::string& name, int value) const
-	{
-		glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
-	}
-	// ------------------------------------------------------------------------
-	void setUint(const std::string& name, unsigned int value) const
-	{
-		glUniform1ui(glGetUniformLocation(ID, name.c_str()), value);
-	}
-	// ------------------------------------------------------------------------
-	void setFloat(const std::string& name, float value) const
-	{
-		int location = glGetUniformLocation(ID, name.c_str());
-		glUniform1f(location, value);
-	}
-	// ------------------------------------------------------------------------
-	void setMat4(const std::string& name, glm::mat4 value) const
-	{
-		int location = glGetUniformLocation(ID, name.c_str());
-		glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
-	}
-	// ------------------------------------------------------------------------
-	void setVec3(const std::string& name, glm::vec3 value) const {
-		glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, glm::value_ptr(value));
-	}
-	
 
-private:
-	// utility function for checking shader compilation/linking errors.
-	// ------------------------------------------------------------------------
+	}
+
 	void checkCompileErrors(unsigned int shader, std::string type)
 	{
 		int success;

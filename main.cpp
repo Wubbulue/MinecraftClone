@@ -274,14 +274,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			oldFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
 		}
 	}
-	// else if (key == GLFW_KEY_EQUAL && action == GLFW_PRESS) //Write chunk 0,0
-	// {
-	//         if (lightLevel <= 14) {
-	//                 lightLevel += 1;
-	//                 shaderTexture->use();
-	//                 shaderTexture->setUint("lightLevel", lightLevel);
-	//         }
-	// }
+	else if (key == GLFW_KEY_R && action == GLFW_PRESS) //Write chunk 0,0
+	{
+		shaderTexture->hotReload();
+	}
 	// else if (key == GLFW_KEY_MINUS && action == GLFW_PRESS) //Load chunk 0,0
 	// {
 	//         if (lightLevel >= 1) {
