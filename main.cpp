@@ -276,16 +276,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	else if (key == GLFW_KEY_R && action == GLFW_PRESS) //Write chunk 0,0
 	{
+		//TODO: make this hot reload all shaders
 		shaderTexture->hotReload();
 	}
-	// else if (key == GLFW_KEY_MINUS && action == GLFW_PRESS) //Load chunk 0,0
-	// {
-	//         if (lightLevel >= 1) {
-	//                 lightLevel -= 1;
-	//                 shaderTexture->use();
-	//                 shaderTexture->setUint("lightLevel", lightLevel);
-	//         }
-	// }
 	else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		saver->writePosition();
 		saver->closeWorld();
@@ -500,6 +493,10 @@ int main()
 
 
 	TextWriter fontWriter;
+
+	colorUnpacked c = { 2,7,12,5 };
+	colorPacked p = World::packColor(c);
+	colorUnpacked after = World::unpackColor(p);
 
 
 

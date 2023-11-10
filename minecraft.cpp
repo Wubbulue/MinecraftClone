@@ -1,6 +1,8 @@
 #include "minecraft.h"
 #include <random>
 
+#define SUPERFLAT
+
 
 void Chunk::empty() {
 	//empty block
@@ -160,6 +162,27 @@ void World::populateChunks() {
 }
 
 void World::populateChunk(Chunk& chunk) {
+
+
+#ifdef SUPERFLAT
+
+	const int height = 40;
+	int offsetX = chunk.x * CHUNK_LENGTH;
+	int offsetZ = chunk.z * CHUNK_LENGTH;
+	for (int z = 0; z < CHUNK_LENGTH; ++z)
+	{
+		for (int x = 0; x < CHUNK_LENGTH; ++x)
+		{
+
+			for (int y = 0; y < height; y++) {
+				chunk.blocks[index(x, z, y)].type = BlockTypes::Stone;
+			}
+
+		}
+
+	}
+
+#else
 	int offsetX = chunk.x * CHUNK_LENGTH;
 	int offsetZ = chunk.z * CHUNK_LENGTH;
 	for (int z = 0; z < CHUNK_LENGTH; ++z)
@@ -182,6 +205,11 @@ void World::populateChunk(Chunk& chunk) {
 		}
 
 	}
+
+#endif // SUPERFLAT
+
+
+
 }
 
 BlockPosition World::findBlock(const glm::vec3& position) {
@@ -1296,6 +1324,7 @@ void World::initOpenGL() {
 	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, dataPerVert, (void*)(5 * sizeof(float)));
 	glEnableVertexAttribArray(2);
 
+	//Light level
 	glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE, dataPerVert, (void*)(5 * sizeof(float) + 1));
 	glEnableVertexAttribArray(3);
 }

@@ -264,8 +264,38 @@ public:
 
 };
 
+typedef uint16_t colorPacked;
+struct colorUnpacked{
+
+	//Each of these is only 4 bits (0 - 15)
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+	uint8_t intensity;
+};
+
 class World {
 public:
+
+    static colorPacked packColor(const colorUnpacked color) {
+		colorPacked packed = 0x0000;
+
+		packed |= (color.red & 0x0F) << 12;
+		packed |= (color.green & 0x0F) << 8;
+		packed |= (color.blue & 0x0F) << 4;
+		packed |= color.intensity & 0x0F;
+
+		return packed;
+	}
+
+	static colorUnpacked unpackColor(const colorPacked color) {
+		colorUnpacked unpacked = {0,0,0,0};
+		unpacked.red |= (color >> 12)&0x0F;
+		unpacked.green |= (color  >> 8)&0x0F;
+		unpacked.blue |= (color  >> 4)&0x0F;
+		unpacked.intensity |= color&0x0F;
+		return unpacked;
+	}
 
 	siv::PerlinNoise::seed_type seed;
 	siv::PerlinNoise perlin;

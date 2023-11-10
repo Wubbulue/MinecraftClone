@@ -7,6 +7,7 @@ flat in uint faceType;
 flat in uint lightLevel;
 
 uniform sampler2D textureUniform;
+uniform uint lightPacked;
 
 vec2 shiftTexCoord(in uint index, in vec2 tex){
 	int xIndex = int(mod(index,16));
