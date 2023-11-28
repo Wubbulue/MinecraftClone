@@ -1,6 +1,7 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
+#include "implot/implot.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -184,6 +185,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 			saver->writeChunk(*chunk);
 		}
 
+		updateBlockPlayerLookingAt();
+
 	}
 	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
 
@@ -201,6 +204,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 			saver->writeChunk(*chunk);
 		}
 
+		updateBlockPlayerLookingAt();
 
 	}
 }
@@ -391,6 +395,7 @@ int main()
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+	ImPlot::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	ImGui::StyleColorsDark();
 	// Setup Platform/Renderer backends
@@ -516,6 +521,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 
+
 		//calc frame rate
 		float timeValue = glfwGetTime();
 		float elapsedTime = timeValue - lastTime;
@@ -553,6 +559,7 @@ int main()
 		shaderTexture->setMat4("model", model);
 		shaderTexture->setMat4("view", view);
 		shaderTexture->setMat4("projection", projection);
+		shaderTexture->setFloat("time", glfwGetTime());
 
 
 
@@ -622,6 +629,35 @@ int main()
 			ImGui::Text(player.walkMode ? "Walk mode" : "Fly mode");
 			ImGui::End();
 
+			if (frameRates.size() == 1) {
+				frameRates[0] = 10;
+			}
+
+			const int numFramesPlot = 200;
+
+			if (frameRates.size() >= numFramesPlot) {
+				ImGui::SetNextWindowPos({ float(SCR_WIDTH - 450),15 });
+				ImGui::SetNextWindowSize({400,335});
+				ImGui::Begin("Framerate");
+				std::vector<float> frameNums;
+				//for (int frameNum = frameRates.size() - 10; frameNum < frameRates.size(); frameNum++) {
+				for (int frameNum = 0; frameNum < numFramesPlot; frameNum++) {
+					frameNums.push_back(frameNum);
+				}
+				//ImPlot::LinkNextPlotLimits(10,20,10,20);
+				float minFrame = *std::min_element(frameRates.end()-numFramesPlot, frameRates.end());
+				float maxFrame = *std::max_element(frameRates.end()-numFramesPlot, frameRates.end());
+				//ImPlot::SetNextAxisLimits(ImAxis_::ImAxis_Y1, minFrame, maxFrame);
+				ImPlot::SetNextAxesToFit();
+				if (ImPlot::BeginPlot("Framerate")) {
+					ImPlot::PlotLine("Framerate", frameRates.data() + frameRates.size() - numFramesPlot, numFramesPlot);
+					ImPlot::EndPlot();
+				}
+
+				ImGui::End();
+
+			}
+
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
@@ -646,15 +682,17 @@ int main()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+	ImPlot::DestroyContext();
 
 
 	// glfw: terminate, clearing all previously allocated GLFW resources.
 	// ------------------------------------------------------------------
 	glfwTerminate();
 
+	printf("test: %f\n", frameRates[0]);
 	frameRates.erase(frameRates.begin());
-	auto avgFrameRate = std::accumulate(frameRates.begin(), frameRates.end(), 0) / frameRates.size();
-	printf("Average frame rate of %d frames was %f", int(frameRates.size()), avgFrameRate);
+	auto avgFrameRate = std::accumulate(frameRates.begin(), frameRates.end(), 0.0) / double(frameRates.size());
+	printf("Average frame rate of %d frames was %f\n", int(frameRates.size()), avgFrameRate);
 
 	return 0;
 }
