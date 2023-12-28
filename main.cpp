@@ -52,7 +52,6 @@ bool lockFrustum = false;
 Frustum oldFrustum;
 
 
-Player player;
 std::shared_ptr<worldSaver> saver;
 std::unique_ptr<ChunkManager> chunkManager;
 
@@ -60,6 +59,8 @@ std::unique_ptr<ChunkManager> chunkManager;
 //Chunk chunk(123489u,0,0);
 //World world(123489u);
 World world(153389u);
+
+Player player(&world);
 bool wireframe = false;
 
 const float lineLength = 30.0f;
@@ -308,10 +309,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	//Toggle between walk mode and fly mode
 	else if (key == GLFW_KEY_M && action == GLFW_PRESS) {
-		player.walkMode = !player.walkMode;
-		if (!player.walkMode) {
-			player.physics_velocity = glm::vec3(0.0f, 0.0f, 0.0f);
-		}
+		player.toggleMovementMode();
 	}
 }
 
@@ -529,8 +527,7 @@ int main()
 		lastTime = timeValue;
 		frameRates.push_back(frameRate);
 
-		player.computeMovementVelocity(window);
-		if (player.tick(elapsedTime)) {
+		if (player.tick(elapsedTime,window)) {
 			//player could be looking at new block after camera movement
 			world.frustumCullDirty = true;
 			world.vboDirty = true;
