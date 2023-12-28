@@ -97,6 +97,10 @@ bool Player::tick(float deltaTime,GLFWwindow* window) {
         return false;
     }
     position += posDifference;
+    BlockPosition blockPos = World::vectorToBlockPosition(position);
+    if (world->getBlock(blockPos)->type != BlockTypes::Air) {
+        position -= posDifference;
+    }
     cam.position = position;
     recalcChunkPos();
     return true;

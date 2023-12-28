@@ -254,7 +254,7 @@ public:
 
 	//finds a block and returns its position as x,y,z
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
-	BlockPosition findBlock(glm::vec3 position);
+	BlockPosition vectorToBlockPosition(glm::vec3 position);
 
 
 
@@ -343,7 +343,7 @@ public:
 	uint32_t numBlocks();
 
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
-	static BlockPosition findBlock(const glm::vec3& position);
+	static BlockPosition vectorToBlockPosition(const glm::vec3& position);
 
 	static void findChunk(const glm::vec3& position, int* chunkX, int* chunkZ);
 
