@@ -410,7 +410,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 
 	//TODO: out of bounds checking
-	auto startingLightLevel = lightLevel[customIndex(pos)];
+	auto startingLightLevel = unpackedLight[customIndex(pos)].intensity;
 	std::queue<BlockPosition> toVisit;
 
 	//this being full size might be a waste?
@@ -418,56 +418,56 @@ void World::propogateLight(BlockPosition& pos) {
 	alreadyVisited.insert(pos);
 	BlockPosition tempPos;
 
-	uint8_t* lightPtr;
+	colorUnpacked* lightPtr;
 	uint8_t newLightLevel = startingLightLevel - 1;
 
 
 	tempPos = { pos.x,pos.y,pos.z - 1 };
 	int index = customIndex(tempPos);
-	lightPtr = lightLevel.data() + index;
-	if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+	lightPtr = unpackedLight.data() + index;
+	if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
-		*lightPtr = newLightLevel;
+		lightPtr->intensity = newLightLevel;
 	}
 
 	tempPos = { pos.x,pos.y,pos.z + 1 };
 	index = customIndex(tempPos);
-	lightPtr = lightLevel.data() + index;
-	if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+	lightPtr = unpackedLight.data() + index;
+	if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
-		*lightPtr = newLightLevel;
+		lightPtr->intensity = newLightLevel;
 	}
 
 	tempPos = { pos.x,pos.y - 1,pos.z };
 	index = customIndex(tempPos);
-	lightPtr = lightLevel.data() + index;
-	if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+	lightPtr = unpackedLight.data() + index;
+	if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
-		*lightPtr = newLightLevel;
+		lightPtr->intensity = newLightLevel;
 	}
 
 	tempPos = { pos.x,pos.y + 1,pos.z };
 	index = customIndex(tempPos);
-	lightPtr = lightLevel.data() + index;
-	if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+	lightPtr = unpackedLight.data() + index;
+	if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
-		*lightPtr = newLightLevel;
+		lightPtr->intensity = newLightLevel;
 	}
 
 	tempPos = { pos.x - 1,pos.y,pos.z };
 	index = customIndex(tempPos);
-	lightPtr = lightLevel.data() + index;
-	if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+	lightPtr = unpackedLight.data() + index;
+	if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
-		*lightPtr = newLightLevel;
+		lightPtr->intensity = newLightLevel;
 	}
 
 	tempPos = { pos.x + 1,pos.y,pos.z };
 	index = customIndex(tempPos);
-	lightPtr = lightLevel.data() + index;
-	if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+	lightPtr = unpackedLight.data() + index;
+	if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
-		*lightPtr = newLightLevel;
+		lightPtr->intensity = newLightLevel;
 	}
 
 
@@ -483,7 +483,7 @@ void World::propogateLight(BlockPosition& pos) {
 			continue;
 		}
 
-		startingLightLevel = lightLevel[customIndex(blockToVisit)];
+		startingLightLevel = unpackedLight[customIndex(blockToVisit)].intensity;
 		if (startingLightLevel <= 1) {
 			//we can't spread a light level of 0
 			continue;
@@ -496,50 +496,50 @@ void World::propogateLight(BlockPosition& pos) {
 		//Otherwise, spread the light!
 		tempPos = { blockToVisit.x,blockToVisit.y,blockToVisit.z - 1 };
 		index = customIndex(tempPos);
-		lightPtr = lightLevel.data() + index;
-		if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+		lightPtr = unpackedLight.data() + index;
+		if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
-			*lightPtr = newLightLevel;
+			lightPtr->intensity = newLightLevel;
 		}
 
 		tempPos = { blockToVisit.x,blockToVisit.y,blockToVisit.z + 1 };
 		index = customIndex(tempPos);
-		lightPtr = lightLevel.data() + index;
-		if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+		lightPtr = unpackedLight.data() + index;
+		if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
-			*lightPtr = newLightLevel;
+			lightPtr->intensity = newLightLevel;
 		}
 
 		tempPos = { blockToVisit.x,blockToVisit.y - 1,blockToVisit.z };
 		index = customIndex(tempPos);
-		lightPtr = lightLevel.data() + index;
-		if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+		lightPtr = unpackedLight.data() + index;
+		if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
-			*lightPtr = newLightLevel;
+			lightPtr->intensity = newLightLevel;
 		}
 
 		tempPos = { blockToVisit.x,blockToVisit.y + 1,blockToVisit.z };
 		index = customIndex(tempPos);
-		lightPtr = lightLevel.data() + index;
-		if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+		lightPtr = unpackedLight.data() + index;
+		if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
-			*lightPtr = newLightLevel;
+			lightPtr->intensity = newLightLevel;
 		}
 
 		tempPos = { blockToVisit.x - 1,blockToVisit.y,blockToVisit.z };
 		index = customIndex(tempPos);
-		lightPtr = lightLevel.data() + index;
-		if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+		lightPtr = unpackedLight.data() + index;
+		if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
-			*lightPtr = newLightLevel;
+			lightPtr->intensity = newLightLevel;
 		}
 
 		tempPos = { blockToVisit.x + 1,blockToVisit.y,blockToVisit.z };
 		index = customIndex(tempPos);
-		lightPtr = lightLevel.data() + index;
-		if (insideRenderSpace(tempPos) && *lightPtr < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
+		lightPtr = unpackedLight.data() + index;
+		if (insideRenderSpace(tempPos) && lightPtr->intensity < newLightLevel && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
-			*lightPtr = newLightLevel;
+			lightPtr->intensity = newLightLevel;
 		}
 
 	}
@@ -549,6 +549,10 @@ void World::propogateLight(BlockPosition& pos) {
 
 
 
+}
+
+bool emitsLight(const BlockType type) {
+	return BlockTypes::unpackedLights[type].intensity;
 }
 
 void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
@@ -767,7 +771,8 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 	{
 		lightDirty = false;
 
-		std::fill(lightLevel.begin(), lightLevel.end(), passiveLightLevel);
+		colorUnpacked normalLight = { 1,1,0,0 };
+		std::fill(unpackedLight.begin(), unpackedLight.end(), normalLight);
 		int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
 
 		for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
@@ -789,10 +794,9 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 								BlockPosition relativePos = { x + (numChunkX * CHUNK_LENGTH), y,  z + (numChunkZ * CHUNK_LENGTH) };
 								auto ind = customIndex(relativePos);
 								auto block = fullWorld.data() + ind;
-								if (block->type == BlockTypes::Planck) {
-									lightLevel[ind] = 15;
+								if (emitsLight(block->type)) {
+									unpackedLight[ind] = BlockTypes::unpackedLights[block->type];
 									propogateLight(relativePos);
-
 								}
 							}
 						}
@@ -809,6 +813,10 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 
 			numChunkX++;
 
+		}
+
+		for (int i = 0; i < unpackedLight.size(); i++) {
+			packedLight[i] = World::packColor(unpackedLight[i]);
 		}
 	}
 
@@ -864,6 +872,8 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 								}
 								else if (block->type == BlockTypes::Planck) {
 									facesPointer = planckFaces;
+								} else if (block->type == BlockTypes::RedWool) {
+									facesPointer = redWoolFaces;
 								}
 
 								glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
@@ -871,43 +881,43 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 
 								//First, check which faces have air on their side
 								//16 light level indicates we shouldn't render
-								uint8_t faceLightLevel[numFacesPerBlock];
+								colorPacked faceLightLevel[numFacesPerBlock];
 								std::fill_n(faceLightLevel, numFacesPerBlock, INVALID_LIGHT_LEVEL);
 								{
 									BlockPosition tempPos = { pos.x,pos.y,pos.z - 1 };
 									int index = customIndex(tempPos);
 									if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
-										faceLightLevel[0] = lightLevel[index];
+										faceLightLevel[0] = packedLight[index];
 									}
 
 									tempPos = { pos.x,pos.y,pos.z + 1 };
 									index = customIndex(tempPos);
 									if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
-										faceLightLevel[1] = lightLevel[index];
+										faceLightLevel[1] = packedLight[index];
 									}
 
 									tempPos = { pos.x - 1,pos.y,pos.z };
 									index = customIndex(tempPos);
 									if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
-										faceLightLevel[2] = lightLevel[index];
+										faceLightLevel[2] = packedLight[index];
 									}
 
 									tempPos = { pos.x + 1,pos.y,pos.z };
 									index = customIndex(tempPos);
 									if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
-										faceLightLevel[3] = lightLevel[index];
+										faceLightLevel[3] = packedLight[index];
 									}
 
 									tempPos = { pos.x,pos.y - 1,pos.z };
 									index = customIndex(tempPos);
 									if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
-										faceLightLevel[4] = lightLevel[index];
+										faceLightLevel[4] = packedLight[index];
 									}
 
 									tempPos = { pos.x,pos.y + 1,pos.z };
 									index = customIndex(tempPos);
 									if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
-										faceLightLevel[5] = lightLevel[index];
+										faceLightLevel[5] = packedLight[index];
 									}
 
 								}
@@ -950,8 +960,8 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 										}
 										memcpy(renderBuffer.data() + bufferWritePos, facesPointer + a, sizeof(uint8_t));
 										bufferWritePos += sizeof(uint8_t);
-										memcpy(renderBuffer.data() + bufferWritePos, &faceLightLevel[face], sizeof(uint8_t));
-										bufferWritePos += sizeof(uint8_t);
+										memcpy(renderBuffer.data() + bufferWritePos, &faceLightLevel[face], sizeof(colorPacked));
+										bufferWritePos += sizeof(colorPacked);
 									}
 								}
 
@@ -1324,7 +1334,7 @@ void World::initOpenGL() {
 	glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, dataPerVert, (void*)(5 * sizeof(float)));
 	glEnableVertexAttribArray(2);
 
-	//Light level
-	glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE, dataPerVert, (void*)(5 * sizeof(float) + 1));
+	//Packed Light
+	glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, dataPerVert, (void*)(5 * sizeof(float) + 1));
 	glEnableVertexAttribArray(3);
 }

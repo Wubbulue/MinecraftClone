@@ -499,9 +499,9 @@ int main()
 
 	TextWriter fontWriter;
 
-	colorUnpacked c = { 2,7,12,5 };
-	colorPacked p = World::packColor(c);
-	colorUnpacked after = World::unpackColor(p);
+	colorUnpacked c = { 15,15,15,9 };
+	colorPacked packedColor = World::packColor(c);
+	colorUnpacked after = World::unpackColor(packedColor);
 
 
 
@@ -560,6 +560,7 @@ int main()
 		shaderTexture->setMat4("view", view);
 		shaderTexture->setMat4("projection", projection);
 		shaderTexture->setFloat("time", glfwGetTime());
+		shaderTexture->setUint("lightPacked",packedColor);
 
 
 

@@ -17,7 +17,6 @@
 
 constexpr int CHUNK_HEIGHT = 64;
 constexpr int CHUNK_LENGTH = 16;
-#define INVALID_LIGHT_LEVEL 16
 
 constexpr int maxNumBlockToRender = 20000;
 constexpr int numFacesPerBlock = 6;
@@ -29,8 +28,9 @@ constexpr uint16_t renderDistance = 6;
 constexpr int renderSpaceSideLength = (renderDistance * 2 + 1) * CHUNK_LENGTH;
 
 //X,Y,Z positions, U,V tex Coord <- Float
-//Face type and light level <- char
-constexpr int dataPerVert = (3 + 2) * sizeof(float) + (1 + 1) * sizeof(uint8_t);
+//Face type <- char
+//packed light <- uint
+constexpr int dataPerVert = (3 + 2) * sizeof(float) + (1) * sizeof(uint8_t) + (1) * sizeof(uint32_t);
 
 constexpr int totalDataPerBlock = (dataPerVert * numVertsPerBlock);
 
@@ -168,8 +168,28 @@ const uint8_t planckFaces[]{
 	4,4,4,4,4,4,
 };
 
+const uint8_t redWoolFaces[]{
+	161,161,161,161,161,161,
+	161,161,161,161,161,161,
+	161,161,161,161,161,161,
+	161,161,161,161,161,161,
+	161,161,161,161,161,161,
+	161,161,161,161,161,161
+};
+
 
 typedef uint8_t BlockType;
+
+typedef uint32_t colorPacked;
+struct colorUnpacked{
+
+	//Each of these is only 4 bits (0 - 15)
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+	uint8_t intensity;
+};
+constexpr colorPacked INVALID_LIGHT_LEVEL = 0xFFFFFFFF;
 
 //have to do this weird hacky thing because enums are 4 bytes long when we only need 1 byte for block type
 namespace BlockTypes {
@@ -177,10 +197,16 @@ namespace BlockTypes {
 	const BlockType Stone = 1;
 	const BlockType Dirt = 2;
 	const BlockType Planck = 3;
-	const std::array<std::string, 4> blockTypeStrings = { "Air","Stone","Dirt","Planck" };
-	const std::array<int, 4> emitsLight = {0,0,0,15};
+	const BlockType RedWool = 4;
+	const std::array<std::string, 5> blockTypeStrings = { "Air","Stone","Dirt","Planck","Red Wool"};
+	const colorUnpacked noLight = { 0,0,0,0 };
+	const colorUnpacked planckLight = { 0,15,0,15 };
+	const colorUnpacked redWoolLight = { 15,0,0,15 };
+	const std::array<colorUnpacked, 5> unpackedLights = { noLight,noLight,noLight,planckLight,redWoolLight};
 	std::string blockTypeToString(BlockType type);
 };
+
+bool emitsLight(const BlockType type);
 
 //enum class BlockType {
 //	Dirt,
@@ -264,15 +290,6 @@ public:
 
 };
 
-typedef uint16_t colorPacked;
-struct colorUnpacked{
-
-	//Each of these is only 4 bits (0 - 15)
-	uint8_t red;
-	uint8_t green;
-	uint8_t blue;
-	uint8_t intensity;
-};
 
 class World {
 public:
@@ -280,20 +297,20 @@ public:
     static colorPacked packColor(const colorUnpacked color) {
 		colorPacked packed = 0x0000;
 
-		packed |= (color.red & 0x0F) << 12;
-		packed |= (color.green & 0x0F) << 8;
-		packed |= (color.blue & 0x0F) << 4;
-		packed |= color.intensity & 0x0F;
+		packed |= (color.red & 0xFF) << 24;
+		packed |= (color.green & 0xFF) << 16;
+		packed |= (color.blue & 0xFF) << 8;
+		packed |= color.intensity & 0xFF;
 
 		return packed;
 	}
 
 	static colorUnpacked unpackColor(const colorPacked color) {
 		colorUnpacked unpacked = {0,0,0,0};
-		unpacked.red |= (color >> 12)&0x0F;
-		unpacked.green |= (color  >> 8)&0x0F;
-		unpacked.blue |= (color  >> 4)&0x0F;
-		unpacked.intensity |= color&0x0F;
+		unpacked.red |= (color >> 24)&0xFF;
+		unpacked.green |= (color  >> 16)&0xFF;
+		unpacked.blue |= (color  >> 8)&0xFF;
+		unpacked.intensity |= color&0xFF;
 		return unpacked;
 	}
 
@@ -315,7 +332,8 @@ public:
 		fullWorld.resize(CHUNK_HEIGHT * renderSpaceSideLength * renderSpaceSideLength);
 		airCulled.resize(fullWorld.size());
 		fullCulled.resize(fullWorld.size());
-		lightLevel = std::vector<uint8_t>(fullWorld.size(),0);
+		unpackedLight = std::vector<colorUnpacked>(fullWorld.size(),{1,0,0,0});
+		packedLight = std::vector<colorPacked>(fullWorld.size(),0);
 		//renderBuffer.resize(fullWorld.size());
 
 		//TODO: i don't really know how big this buffer needs to be, this is a guess...
@@ -404,7 +422,8 @@ public:
 
 
 	//ranges from 0 to 15
-	std::vector<uint8_t> lightLevel = { 0 };
+	std::vector<colorUnpacked> unpackedLight = { {1,0,0,0} };
+	std::vector<colorPacked> packedLight = {0};
 	const uint8_t passiveLightLevel = 2;
 
 	std::atomic_int numBlocksToRender = 0;
