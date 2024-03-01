@@ -1,7 +1,7 @@
 #include "minecraft.h"
 #include <random>
 
-#define SUPERFLAT
+//#define SUPERFLAT
 
 
 void Chunk::empty() {
@@ -52,7 +52,7 @@ bool Chunk::isBlockAdjacentToAir(int x, int y, int z) {
 
 
 
-BlockPosition Chunk::findBlock(glm::vec3 position) {
+BlockPosition Chunk::vectorToBlockPosition(glm::vec3 position) {
 
 	//TODO: find better assert solution
 
@@ -212,7 +212,7 @@ void World::populateChunk(Chunk& chunk) {
 
 }
 
-BlockPosition World::findBlock(const glm::vec3& position) {
+BlockPosition World::vectorToBlockPosition(const glm::vec3& position) {
 
 	//TODO: find better assert solution
 
@@ -292,7 +292,7 @@ Chunk* World::getChunkContainingBlock(const BlockPosition& pos) {
 
 Chunk* World::getChunkContainingPosition(const glm::vec3& position)
 {
-	auto blockPos = findBlock(position);
+	auto blockPos = vectorToBlockPosition(position);
 	return getChunkContainingBlock(blockPos.x, blockPos.z);
 }
 
@@ -1005,8 +1005,8 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 	ray_end = ray.dir * length + ray.orig;
 
 
-	BlockPosition curPos = findBlock(ray_start);
-	BlockPosition endPos = findBlock(ray_end);
+	BlockPosition curPos = vectorToBlockPosition(ray_start);
+	BlockPosition endPos = vectorToBlockPosition(ray_end);
 
 	//auto chunkTemp = getChunkContainingBlock(endPos.x, endPos.z);
 	//BlockType type;
@@ -1140,8 +1140,8 @@ bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& po
 	ray_end = ray.dir * length + ray.orig;
 
 
-	BlockPosition curPos = findBlock(ray_start);
-	BlockPosition endPos = findBlock(ray_end);
+	BlockPosition curPos = vectorToBlockPosition(ray_start);
+	BlockPosition endPos = vectorToBlockPosition(ray_end);
 
 	//auto chunkTemp = getChunkContainingBlock(endPos.x, endPos.z);
 	//BlockType type;
