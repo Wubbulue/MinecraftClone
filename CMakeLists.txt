@@ -24,7 +24,7 @@ message(${ThirdParty})
 PROJECT (Minecraft_Clone)
 
 
-add_executable( Minecraft_Clone main.cpp shader.h stb_image.h camera.h camera.cpp 
+add_executable( Minecraft_Clone main.cpp shader.h stb_image.h Camera.h Camera.cpp 
 minecraft.h minecraft.cpp PerlinNoise.h EBO.cpp EBO.h VBO.cpp VBO.h VAO.cpp VAO.h
 line.cpp line.h geometery.h geometery.cpp Logging.h Logging.cpp Player.h Player.cpp 
 font.h font.cpp Colors.h save.h save.cpp Timer.h Timer.cpp ThreadPool.h ThreadPool.cpp 
