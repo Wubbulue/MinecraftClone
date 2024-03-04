@@ -3,8 +3,10 @@ set (CMAKE_CXX_STANDARD 17)
 
 #find_package(OpenGL REQUIRED)
 
+PROJECT (Minecraft_Clone)
  
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set (ThirdParty ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty)
 set (ImGuiSrc ${ThirdParty}/lib/imgui)
 set (ImPlotSrc ${ThirdParty}/lib/implot)
@@ -21,17 +23,23 @@ TARGET_LINK_LIBRARIES (implot PUBLIC imgui)
 
 message(${ThirdParty})
 
-PROJECT (Minecraft_Clone)
+
 
 
 add_executable( Minecraft_Clone main.cpp shader.h stb_image.h Camera.h Camera.cpp 
 minecraft.h minecraft.cpp PerlinNoise.h EBO.cpp EBO.h VBO.cpp VBO.h VAO.cpp VAO.h
-line.cpp line.h geometery.h geometery.cpp Logging.h Logging.cpp Player.h Player.cpp 
+line.cpp line.h geometery.h geometery.cpp Player.h Player.cpp 
 font.h font.cpp Colors.h save.h save.cpp Timer.h Timer.cpp ThreadPool.h ThreadPool.cpp 
 Block.cpp Block.h)
 
 
 
-TARGET_LINK_LIBRARIES (Minecraft_Clone PUBLIC ${ThirdParty}/lib/glfw/glfw3.lib ${ThirdParty}/lib/freetype/freetype.lib glad imgui implot)         
+if (WIN32)
+    TARGET_LINK_LIBRARIES (Minecraft_Clone PUBLIC ${ThirdParty}/lib/glfw/glfw3.lib ${ThirdParty}/lib/freetype/freetype.lib glad imgui implot)         
+else()
+    find_package(glfw3 3.3 REQUIRED)
+    find_package(freetype REQUIRED)
+    target_link_libraries (Minecraft_Clone PUBLIC glfw freetype glad imgui stdc++fs implot)         
+endif (WIN32)
 
 
