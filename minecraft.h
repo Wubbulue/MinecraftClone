@@ -332,7 +332,7 @@ public:
 		fullWorld.resize(CHUNK_HEIGHT * renderSpaceSideLength * renderSpaceSideLength);
 		airCulled.resize(fullWorld.size());
 		fullCulled.resize(fullWorld.size());
-		unpackedLight = std::vector<colorUnpacked>(fullWorld.size(),{1,0,0,0});
+		unpackedLight = std::vector<colorUnpacked>(fullWorld.size(),{0,15,0,0});
 		packedLight = std::vector<colorPacked>(fullWorld.size(),0);
 		//renderBuffer.resize(fullWorld.size());
 
@@ -398,6 +398,7 @@ public:
 	//This function translates a position from render space to absolute space
 	BlockPosition renderSpaceToAbsoluteSpace(BlockPosition& pos);
 
+	static void blendLight(const colorUnpacked *src,colorUnpacked *dest);
 	void propogateLight(BlockPosition &pos);
 	void getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum);
 
