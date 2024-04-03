@@ -473,7 +473,7 @@ public:
 	bool lightDirty = true;
 	bool vboDirty = true;
 
-	const bool alwaysRender = false;
+	const bool alwaysRender = true;
 
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
