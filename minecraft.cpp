@@ -148,6 +148,11 @@ void World::regenerate() {
 		chunk.empty();
 		populateChunk(chunk);
 	}
+	fullWorld.resize(CHUNK_HEIGHT * renderSpaceSideLength * renderSpaceSideLength);
+	airCulled.resize(fullWorld.size());
+	fullCulled.resize(fullWorld.size());
+	unpackedLight = std::vector<colorUnpacked>(fullWorld.size(),{0,15,0,0});
+	packedLight = std::vector<colorPacked>(fullWorld.size(),0);
 }
 
 
@@ -576,6 +581,11 @@ bool emitsLight(const BlockType type) {
 	return BlockTypes::unpackedLights[type].intensity;
 }
 
+const uint8_t* getFacesArray(const BlockType type) {
+	return BlockTypes::facesArray[type];
+}
+
+
 void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 {
 
@@ -883,19 +893,8 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 									continue;
 								}
 
-								const uint8_t* facesPointer = dirtFaces;
+								const uint8_t* facesPointer = getFacesArray(block->type);
 
-								if (block->type == BlockTypes::Dirt) {
-									facesPointer = dirtFaces;
-								}
-								else if (block->type == BlockTypes::Stone) {
-									facesPointer = stoneFaces;
-								}
-								else if (block->type == BlockTypes::Planck) {
-									facesPointer = planckFaces;
-								} else if (block->type == BlockTypes::RedWool) {
-									facesPointer = redWoolFaces;
-								}
 
 								glm::vec3 center(float(x + 0.5f) + offsetX, float(y + 0.5f), float(z + 0.5f) + offsetZ);
 

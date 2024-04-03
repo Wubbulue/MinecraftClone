@@ -168,13 +168,31 @@ const uint8_t planckFaces[]{
 	4,4,4,4,4,4,
 };
 
-const uint8_t redWoolFaces[]{
-	161,161,161,161,161,161,
-	161,161,161,161,161,161,
-	161,161,161,161,161,161,
-	161,161,161,161,161,161,
-	161,161,161,161,161,161,
-	161,161,161,161,161,161
+const uint8_t whiteFaces[]{
+	225,225,225,225,225,225,
+	225,225,225,225,225,225,
+	225,225,225,225,225,225,
+	225,225,225,225,225,225,
+	225,225,225,225,225,225,
+	225,225,225,225,225,225,
+};
+
+const uint8_t redFaces[]{
+	129,129,129,129,129,129,
+	129,129,129,129,129,129,
+	129,129,129,129,129,129,
+	129,129,129,129,129,129,
+	129,129,129,129,129,129,
+	129,129,129,129,129,129,
+};
+
+const uint8_t greenFaces[]{
+	145,145,145,145,145,145,
+	145,145,145,145,145,145,
+	145,145,145,145,145,145,
+	145,145,145,145,145,145,
+	145,145,145,145,145,145,
+	145,145,145,145,145,145,
 };
 
 
@@ -197,16 +215,22 @@ namespace BlockTypes {
 	const BlockType Stone = 1;
 	const BlockType Dirt = 2;
 	const BlockType Planck = 3;
-	const BlockType RedWool = 4;
-	const std::array<std::string, 5> blockTypeStrings = { "Air","Stone","Dirt","Planck","Red Wool"};
+	const BlockType whiteLight = 4;
+	const BlockType redLight = 5;
+	const BlockType greenLight = 6;
+	const std::array<std::string, 7> blockTypeStrings = { "Air","Stone","Dirt","Planck","White Light","Red Light", "Green Light"};
 	const colorUnpacked noLight = { 0,0,0,0 };
-	const colorUnpacked planckLight = { 0,15,0,15 };
-	const colorUnpacked redWoolLight = { 15,0,0,15 };
-	const std::array<colorUnpacked, 5> unpackedLights = { noLight,noLight,noLight,planckLight,redWoolLight};
+	const colorUnpacked white= { 15,15,15,15 };
+	const colorUnpacked red= { 15,0,0,15 };
+	const colorUnpacked green= { 0,15,0,15 };
+	const std::array<colorUnpacked, 7> unpackedLights = { noLight,noLight,noLight,noLight,white,red,green};
+	const std::array<const uint8_t*, 7> facesArray = {nullptr,stoneFaces,dirtFaces,planckFaces,whiteFaces,redFaces,greenFaces};
 	std::string blockTypeToString(BlockType type);
 };
 
 bool emitsLight(const BlockType type);
+
+const uint8_t* getFacesArray(const BlockType type);
 
 //enum class BlockType {
 //	Dirt,

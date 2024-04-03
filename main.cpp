@@ -253,12 +253,13 @@ static void glfw_error_callback(int error, const char* description)
 //will only get called when a key is pressed
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (key == GLFW_KEY_N && action == GLFW_PRESS) //regenerate chunks
-	{
-		world.regenerate();
-		world.renderBlocksDirty = true;
-	}
-	else if (key == GLFW_KEY_T && action == GLFW_PRESS) //toggle wireframes
+	//Regeneration causes segfaults currently!
+	//if (key == GLFW_KEY_N && action == GLFW_PRESS) //regenerate chunks
+	//{
+	//	world.regenerate();
+	//	world.renderBlocksDirty = false;
+	//}
+	if (key == GLFW_KEY_T && action == GLFW_PRESS) //toggle wireframes
 	{
 		wireframe = !wireframe;
 		if (wireframe) {
@@ -308,9 +309,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		}
 	}
 	//Toggle between walk mode and fly mode
-	else if (key == GLFW_KEY_M && action == GLFW_PRESS) {
-		player.toggleMovementMode();
-	}
+	//Disable this while it doesn't work still
+	//else if (key == GLFW_KEY_M && action == GLFW_PRESS) {
+	//	player.toggleMovementMode();
+	//}
 }
 
 //relatively rotates something around a point
