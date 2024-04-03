@@ -64,10 +64,8 @@ Player player(&world);
 bool wireframe = false;
 
 const float lineLength = 30.0f;
-std::vector<Line> cameraLines;
 std::vector<Line> blockLines;
 
-float cubeRadius;
 
 //need access to this shader on user input callback, thus put it here
 std::unique_ptr<Shader> shaderTexture;
@@ -104,16 +102,6 @@ uint8_t bLineIndices[] = {
 	6,7,
 };
 
-void drawCamFrustum() {
-	Frustum camFrustum = createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
-	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.rightFace.normal, COLORS::red));
-	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.leftFace.normal, COLORS::blue));
-	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.topFace.normal, COLORS::purple));
-	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.bottomFace.normal, COLORS::yellow));
-	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.nearFace.normal, COLORS::cyan));
-	cameraLines.emplace_back(Line(player.cam.position, player.cam.position + camFrustum.farFace.normal, COLORS::white));
-
-}
 
 void updateBlockPlayerLookingAt() {
 
@@ -308,8 +296,20 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			blockToPlace++;
 		}
 	}
+	else if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
+		if (world.ambientLight.intensity < 15) {
+			world.ambientLight.intensity++;
+		}
+		world.lightDirty = true;
+	}
+	else if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+		if (world.ambientLight.intensity > 0) {
+			world.ambientLight.intensity--;
+		}
+		world.lightDirty = true;
+	}
 	//Toggle between walk mode and fly mode
-	//Disable this while it doesn't work still
+	//Disabled while it isn't working
 	//else if (key == GLFW_KEY_M && action == GLFW_PRESS) {
 	//	player.toggleMovementMode();
 	//}
@@ -332,15 +332,6 @@ int main()
 	chunkManager = std::make_unique<ChunkManager>(saver.get(), &player, &world);
 	chunkManager->initWorld();
 
-
-
-	cubeRadius = 1.0f / cos(glm::radians(45.0f));
-
-
-	//world.addChunk(0, 0);
-	//world.addChunk(-1, 0);
-	//world.addChunk(0, -1);
-	//world.addChunk(-1, -1);
 
 
 
@@ -391,8 +382,8 @@ int main()
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 
+	// Setup ImGui context
 	const char* glsl_version = "#version 330";
-	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImPlot::CreateContext();
@@ -411,6 +402,7 @@ int main()
 
 
 
+	//Build our shaders
 	Shader lineShader("../shaders/vert_line.glsl", "../shaders/frag_line.glsl", "line shader");
 
 	shaderTexture = std::make_unique<Shader>("../shaders/vert_texture.glsl", "../shaders/frag_texture.glsl", "texture shader");
@@ -420,15 +412,9 @@ int main()
 
 	Shader diffuseShader("../shaders/vert_diffuse.glsl", "../shaders/frag_diffuse.glsl", "diffuse shader");
 
+	//Load texture atlas
 	unsigned int atlasTexture;
 	{
-		//--------------------------TEXTURES---------------------------------------------------
-
-
-		// load and create a texture 
-		// -------------------------
-		// Dirt
-		// ---------
 		glGenTextures(1, &atlasTexture);
 		glBindTexture(GL_TEXTURE_2D, atlasTexture);
 
@@ -455,7 +441,6 @@ int main()
 		}
 		stbi_image_free(data);
 
-		//-------------------------------------------------------------------------------------------
 	}
 
 
@@ -497,11 +482,6 @@ int main()
 	glm::mat4 projection = glm::mat4(1.0f);
 
 
-	TextWriter fontWriter;
-
-	colorUnpacked c = { 15,15,15,9 };
-	colorPacked packedColor = World::packColor(c);
-	colorUnpacked after = World::unpackColor(packedColor);
 
 
 
@@ -559,7 +539,6 @@ int main()
 		shaderTexture->setMat4("view", view);
 		shaderTexture->setMat4("projection", projection);
 		shaderTexture->setFloat("time", glfwGetTime());
-		shaderTexture->setUint("lightPacked",packedColor);
 
 
 
@@ -567,7 +546,7 @@ int main()
 
 
 		Frustum camFrustum = lockFrustum ? oldFrustum : createFrustumFromCamera(player.cam, float(SCR_WIDTH) / float(SCR_HEIGHT));
-		world.getBlocksToRenderThreaded(player.chunkX, player.chunkZ, camFrustum);
+		world.renderThreaded(player.chunkX, player.chunkZ, camFrustum);
 
 
 
@@ -586,14 +565,8 @@ int main()
 
 
 
-		for (auto const& line : cameraLines) {
-			lineShader.setVec3("color", line.lineColor);
-			MVP = projection * view * line.modelMatrix;
-			lineShader.setMat4("MVP", MVP);
-			glDrawArrays(GL_LINES, 0, 2);
-		}
 
-
+		//Draw an outline around the block we're currently looking at
 		for (auto const& line : blockLines) {
 			lineShader.setVec3("color", line.lineColor);
 			MVP = projection * view * line.modelMatrix;
@@ -618,6 +591,7 @@ int main()
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::Text("Position: x: %f, y: %f, z: %f", player.cam.position.x, player.cam.position.y, player.cam.position.z);
 			ImGui::Text("Block type to place: %s    (Change with Q and E)", BlockTypes::blockTypeToString(blockToPlace).c_str());
+			ImGui::Text("Ambient light level: %d    (Change with up and down arrow)", world.ambientLight.intensity);
 			if (player.isLookingAtBlock) {
 				auto b = player.blockLookingAt;
 				std::string blockTypeString = BlockTypes::blockTypeToString(world.getBlock(b)->type);
@@ -626,7 +600,6 @@ int main()
 			else {
 				ImGui::Text("Player is not looking at block");
 			}
-			ImGui::Text(player.walkMode ? "Walk mode" : "Fly mode");
 			ImGui::End();
 
 			if (frameRates.size() == 1) {

@@ -97,7 +97,7 @@ bool Player::tick(float deltaTime,GLFWwindow* window) {
         return false;
     }
     position += posDifference;
-    if (!walkMode) {
+    if (walkMode) {
 		BlockPosition blockPos = World::vectorToBlockPosition(position);
 		if (world->getBlock(blockPos)->type != BlockTypes::Air) {
 			position -= posDifference;

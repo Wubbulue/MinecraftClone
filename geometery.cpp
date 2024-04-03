@@ -1,5 +1,7 @@
 #include "geometery.h"
 
+//NOTE: A decent chunk of this code was copied from somewhere, I don't remember where though...
+
 bool rayIntersect(glm::vec3 rayOrigin, glm::vec3 rayVector, Triangle* inTriangle, glm::vec3& outIntersectionPoint) {
 	const float EPSILON = 0.0000001;
 	glm::vec3 vertex0 = inTriangle->points[0];

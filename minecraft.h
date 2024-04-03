@@ -139,7 +139,7 @@ const float texPositions[]{
 };
 
 
-//TODO: this is clearly really bad...
+//TODO: this is clearly really bad, need to abstract this
 const uint8_t dirtFaces[]{
 	3,3,3,3,3,3,
 	3,3,3,3,3,3,
@@ -206,10 +206,15 @@ struct colorUnpacked{
 	uint8_t green;
 	uint8_t blue;
 	uint8_t intensity;
+
+	bool operator==(const colorUnpacked& r)
+	{
+
+		return red == r.red && green == r.green && blue == r.blue && intensity == r.intensity;
+	}
 };
 constexpr colorPacked INVALID_LIGHT_LEVEL = 0xFFFFFFFF;
 
-//have to do this weird hacky thing because enums are 4 bytes long when we only need 1 byte for block type
 namespace BlockTypes {
 	const BlockType Air = 0;
 	const BlockType Stone = 1;
@@ -232,11 +237,6 @@ bool emitsLight(const BlockType type);
 
 const uint8_t* getFacesArray(const BlockType type);
 
-//enum class BlockType {
-//	Dirt,
-//	Air,
-//	Stone
-//};
 
 
 struct Block {
@@ -259,6 +259,7 @@ struct BlockPosition {
 	}
 };
 
+//Implement hash function for block position so we can put them in a hashed set
 template <>
 struct std::hash<BlockPosition>
 {
@@ -284,14 +285,14 @@ public:
 
 
 
-	//this will copy heap memory every time
-	//TODO: make this better
+	//Actual set of blocks within the chunk
 	std::vector<Block> blocks;
 
 	//this function returns a block given a block position that is global
 	Block* indexAbsolute(BlockPosition pos);
 
 	Chunk(int inX, int inZ) : x(inX), z(inZ) {
+		//Allocate memory for our block buffer upopn construction
 		blocks.resize(CHUNK_LENGTH * CHUNK_LENGTH * CHUNK_HEIGHT);
 	}
 
@@ -307,17 +308,15 @@ public:
 	BlockPosition vectorToBlockPosition(glm::vec3 position);
 
 
-
-
+	//Gets a box3 surrounding the chunk, used for frustum culling
 	Box3 getBox();
-
-
 };
 
 
 class World {
 public:
 
+	//Use bitshifting to pack an unpacked color into a packed one
     static colorPacked packColor(const colorUnpacked color) {
 		colorPacked packed = 0x0000;
 
@@ -329,6 +328,7 @@ public:
 		return packed;
 	}
 
+	//Use bitshifting to unpack a packed color
 	static colorUnpacked unpackColor(const colorPacked color) {
 		colorUnpacked unpacked = {0,0,0,0};
 		unpacked.red |= (color >> 24)&0xFF;
@@ -338,10 +338,14 @@ public:
 		return unpacked;
 	}
 
+	//Perlin noise generator used for world generation
 	siv::PerlinNoise::seed_type seed;
 	siv::PerlinNoise perlin;
 
+	//Generate and fill all chunks
 	void populateChunks();
+
+	//Generate and fill a single chunk
 	void populateChunk(Chunk& chunk);
 
 	//randomizes seed and regenerates
@@ -350,15 +354,16 @@ public:
 	World(siv::PerlinNoise::seed_type inSeed) :seed(inSeed) {
 
 		printf("maxNumBlockToRender: %d, numVertsPerBlock: %d, dataPerVert: %d, totalDataPerBlock: %d\n", maxNumBlockToRender, numVertsPerBlock, dataPerVert, totalDataPerBlock);
+
+		//Seed our noise generator
 		perlin = siv::PerlinNoise(seed);
 
-		//set it to size of blocks around player
+		//Allocate all of our persistent buffers
 		fullWorld.resize(CHUNK_HEIGHT * renderSpaceSideLength * renderSpaceSideLength);
 		airCulled.resize(fullWorld.size());
 		fullCulled.resize(fullWorld.size());
-		unpackedLight = std::vector<colorUnpacked>(fullWorld.size(),{0,15,0,0});
+		unpackedLight = std::vector<colorUnpacked>(fullWorld.size(),ambientLight);
 		packedLight = std::vector<colorPacked>(fullWorld.size(),0);
-		//renderBuffer.resize(fullWorld.size());
 
 		//TODO: i don't really know how big this buffer needs to be, this is a guess...
 		renderBuffer.resize(5000000);
@@ -382,17 +387,19 @@ public:
 	//traverses until a solid block is found. If one is found, returns the air block right before that(where a block should be placed). If none is found, function returns false.
 	bool getPlaceBlock(const Ray& ray, const float& length, BlockPosition& pos);
 
+	//Count the number of blocks in the world
 	uint32_t numBlocks();
 
+	//Convert a vector world position to a rounded block position
 	//block are inclusive at start, and non inclusive at end, except for at chunk border
 	static BlockPosition vectorToBlockPosition(const glm::vec3& position);
 
+
+	//Given a vector position, finds the chunkx and chunkz that the position lives in
 	static void findChunk(const glm::vec3& position, int* chunkX, int* chunkZ);
 
+	//"Delete" a block from the world by converting it to air
 	void removeBlock(const BlockPosition& pos);
-
-
-
 
 	//gets chunk from block coords
 	//returns nullptr if it can't find chunk
@@ -401,15 +408,18 @@ public:
 	Chunk* getChunkContainingPosition(const glm::vec3& position);
 	Chunk* getChunkContainingBlock(const BlockPosition& pos);
 
-	//this function tries to find a block within the worl given a block position
+	//this function tries to find a block within the world given a block position
+	//Returns nullptr if it can't find it
 	Block* getBlock(const BlockPosition& pos);
 
 	//gets chunk from chunk 
 	//returns nullptr if it can't find chunk
 	Chunk* getChunk(const int& x, const int& z);
 
+	//Checks if block is adjacent to an air block in any four directions (used for rendering)
 	bool isBlockAdjacentToAir(BlockPosition pos);
 
+	//Convert a 3d position into a 1d index we can access buffer data with
 	int customIndex(int x, int z, int y);
 	int customIndex(const BlockPosition&);
 
@@ -422,16 +432,16 @@ public:
 	//This function translates a position from render space to absolute space
 	BlockPosition renderSpaceToAbsoluteSpace(BlockPosition& pos);
 
+	//Blend two light colors together, seeems to not be working completely?
 	static void blendLight(const colorUnpacked *src,colorUnpacked *dest);
-	void propogateLight(BlockPosition &pos);
-	void getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum);
 
-	//~World() {
-		//for (auto& [key, chunk] : chunks)
-		//{
-		//	delete[] chunk.blocks;
-		//}
-	//}
+
+	//Given a block position that has a light at it, use flood fill algorithm to spread the light
+	void propogateLight(BlockPosition &pos);
+
+	//Given the players chunk x and chunk z along with the camera frustum, render the world
+	void renderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum);
+
 
 	//this is a vector of all blocks around the player which is updated by the getBlocksToRender function to save it from being allocated every frame
 	//It is organized x,z,y
@@ -443,24 +453,27 @@ public:
 	//these are the blocks that should be rendered on each frame
 	std::vector<Block> fullCulled;
 
+	//Render buffer bytes to be sent to opengl
 	std::vector<char> renderBuffer;
 
 
 	//ranges from 0 to 15
 	std::vector<colorUnpacked> unpackedLight = { {1,0,0,0} };
 	std::vector<colorPacked> packedLight = {0};
-	const uint8_t passiveLightLevel = 2;
+
+	colorUnpacked ambientLight = { 15,15,15,5 };
 
 	std::atomic_int numBlocksToRender = 0;
 
     uint32_t numFacesToRender = 0;
 
+	//A set of flags used to determine which stages in the render process are dirty
 	bool renderBlocksDirty = true;
 	bool frustumCullDirty = true;
 	bool lightDirty = true;
 	bool vboDirty = true;
 
-	const bool alwaysRender = true;
+	const bool alwaysRender = false;
 
 
 	//number of chunks that are loaded around player, for example, distance of 4 would result in 9x9 grid of chunks
@@ -469,11 +482,13 @@ public:
 
 	//this function mashes our two 4 byte integers into a single 8 byte output
 	//https://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
+	//Given a chunk x and z, hashses them together
 	static int64_t genHash(int32_t a, int32_t b);
 
 	//opposite of above
 	static void retrieveHash(int32_t* a, int32_t* b, int64_t c);
 
+	//Given a chunk position hash key, returns corresponding chunk
 	std::unordered_map<int64_t, Chunk> chunks;
 
 	unsigned int getVAO() {

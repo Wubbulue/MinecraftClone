@@ -509,14 +509,18 @@ void World::propogateLight(BlockPosition& pos) {
 			continue;
 		}
 
+		alreadyVisited.insert(blockToVisit);
+
 		startingLight = unpackedLight.data()+customIndex(blockToVisit);
+		if (*startingLight == ambientLight) {
+			continue;
+		}
 		//check this for blending light
 		if (startingLight->intensity <= 1) {
 			//we can't spread a light level of 0
 			continue;
 		}
 
-		alreadyVisited.insert(blockToVisit);
 
 
 		//Otherwise, spread the light!
@@ -586,7 +590,7 @@ const uint8_t* getFacesArray(const BlockType type) {
 }
 
 
-void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
+void World::renderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 {
 
 	//cull obfuscated
@@ -802,9 +806,10 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 	{
 		lightDirty = false;
 
-		colorUnpacked normalLight = { 0,15,0,0 };
-		std::fill(unpackedLight.begin(), unpackedLight.end(), normalLight);
+		std::fill(unpackedLight.begin(), unpackedLight.end(), ambientLight);
 		int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
+
+		int numLightsProped = 0;
 
 		for (int i = chunkX - renderDistance; i < chunkX + renderDistance + 1; i++) {
 
@@ -834,7 +839,6 @@ void World::getBlocksToRenderThreaded(int chunkX, int chunkZ, const Frustum& cam
 					}
 
 
-					//}));
 				}
 
 				chunkNum++;
