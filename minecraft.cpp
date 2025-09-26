@@ -6,7 +6,7 @@
 
 void Chunk::empty() {
 	//empty block
-	Block block;
+	BlockType block = BlockTypes::Air;
 
 	for (unsigned int x = 0; x < CHUNK_LENGTH; x++) {
 		for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
@@ -22,26 +22,26 @@ bool Chunk::isBlockAdjacentToAir(int x, int y, int z) {
 	//must make sure we don't check outside chunk bounds
 
 	//check x adjacency
-	if ((x > 0) && (blocks[index(x - 1, z, y)].type == BlockTypes::Air)) {
+	if ((x > 0) && (blocks[index(x - 1, z, y)] == BlockTypes::Air)) {
 		return true;
 	}
-	if ((x < (CHUNK_LENGTH - 1)) && (blocks[index(x + 1, z, y)].type == BlockTypes::Air)) {
+	if ((x < (CHUNK_LENGTH - 1)) && (blocks[index(x + 1, z, y)] == BlockTypes::Air)) {
 		return true;
 	}
 
 	//check z adjacency
-	if ((z > 0) && (blocks[index(x, z - 1, y)].type == BlockTypes::Air)) {
+	if ((z > 0) && (blocks[index(x, z - 1, y)] == BlockTypes::Air)) {
 		return true;
 	}
-	if ((z < (CHUNK_LENGTH - 1)) && (blocks[index(x, z + 1, y)].type == BlockTypes::Air)) {
+	if ((z < (CHUNK_LENGTH - 1)) && (blocks[index(x, z + 1, y)] == BlockTypes::Air)) {
 		return true;
 	}
 
 	//check y adjacency
-	if ((y > 0) && (blocks[index(x, z, y - 1)].type == BlockTypes::Air)) {
+	if ((y > 0) && (blocks[index(x, z, y - 1)] == BlockTypes::Air)) {
 		return true;
 	}
-	if ((y < (CHUNK_HEIGHT - 1)) && (blocks[index(x, z, y + 1)].type == BlockTypes::Air)) {
+	if ((y < (CHUNK_HEIGHT - 1)) && (blocks[index(x, z, y + 1)] == BlockTypes::Air)) {
 		return true;
 	}
 
@@ -90,7 +90,7 @@ std::string BlockTypes::blockTypeToString(BlockType type) {
 
 
 
-Block* Chunk::indexAbsolute(BlockPosition pos) {
+BlockType* Chunk::indexAbsolute(BlockPosition pos) {
 	pos.x -= x * CHUNK_LENGTH;
 	pos.z -= z * CHUNK_LENGTH;
 	bool inXRange = (pos.x < CHUNK_LENGTH) && (pos.x >= 0);
@@ -151,7 +151,6 @@ void World::regenerate() {
 	fullWorld.resize(CHUNK_HEIGHT * renderSpaceSideLength * renderSpaceSideLength);
 	airCulled.resize(fullWorld.size());
 	fullCulled.resize(fullWorld.size());
-	unpackedLight = std::vector<colorUnpacked>(fullWorld.size(),{0,15,0,0});
 	packedLight = std::vector<colorPacked>(fullWorld.size(),0);
 }
 
@@ -201,10 +200,10 @@ void World::populateChunk(Chunk& chunk) {
 			//TODO: make this better
 			if (pixColor == CHUNK_HEIGHT) pixColor--;
 
-			chunk.blocks[index(x, z, pixColor)].type = BlockTypes::Dirt;
+			chunk.blocks[index(x, z, pixColor)] = BlockTypes::Dirt;
 
 			for (int y = pixColor - 1; y > -1; y--) {
-				chunk.blocks[index(x, z, y)].type = BlockTypes::Stone;
+				chunk.blocks[index(x, z, y)] = BlockTypes::Stone;
 			}
 
 		}
@@ -301,7 +300,7 @@ Chunk* World::getChunkContainingPosition(const glm::vec3& position)
 	return getChunkContainingBlock(blockPos.x, blockPos.z);
 }
 
-Block* World::getBlock(const BlockPosition& pos)
+BlockType* World::getBlock(const BlockPosition& pos)
 {
 	auto chunk = getChunkContainingBlock(pos);
 
@@ -332,19 +331,19 @@ bool World::isBlockAdjacentToAir(BlockPosition pos)
 
 	//must make sure we don't check outside chunk bounds
 
-	Block* block;
+	BlockType* block;
 
 	//check x adjacency
 	pos.x++;
 	block = getBlock(pos);
-	if ((block) && (block->type == BlockTypes::Air)) {
+	if ((block) && (*block == BlockTypes::Air)) {
 		return true;
 	}
 	pos.x--;
 
 	pos.x--;
 	block = getBlock(pos);
-	if ((block) && (block->type == BlockTypes::Air)) {
+	if ((block) && (*block == BlockTypes::Air)) {
 		return true;
 	}
 	pos.x++;
@@ -352,14 +351,14 @@ bool World::isBlockAdjacentToAir(BlockPosition pos)
 	//check z adjacency
 	pos.z++;
 	block = getBlock(pos);
-	if ((block) && (block->type == BlockTypes::Air)) {
+	if ((block) && (*block == BlockTypes::Air)) {
 		return true;
 	}
 	pos.z--;
 
 	pos.z--;
 	block = getBlock(pos);
-	if ((block) && (block->type == BlockTypes::Air)) {
+	if ((block) && (*block == BlockTypes::Air)) {
 		return true;
 	}
 	pos.z++;
@@ -367,7 +366,7 @@ bool World::isBlockAdjacentToAir(BlockPosition pos)
 	if (pos.y < (CHUNK_HEIGHT - 1)) {
 		pos.y++;
 		block = getBlock(pos);
-		if ((block) && (block->type == BlockTypes::Air)) {
+		if ((block) && (*block == BlockTypes::Air)) {
 			return true;
 		}
 		pos.y--;
@@ -376,7 +375,7 @@ bool World::isBlockAdjacentToAir(BlockPosition pos)
 	if (pos.y > 0) {
 		pos.y--;
 		block = getBlock(pos);
-		if ((block) && (block->type == BlockTypes::Air)) {
+		if ((block) && (*block == BlockTypes::Air)) {
 			return true;
 		}
 		pos.y++;
@@ -437,7 +436,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 
 	//TODO: out of bounds checking
-	colorUnpacked* startingLight = unpackedLight.data()+customIndex(pos);
+	colorUnpacked* startingLight = &fullWorld[customIndex(pos)].lightLevel;
 	std::queue<BlockPosition> toVisit;
 
 	//this being full size might be a waste?
@@ -450,7 +449,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 	tempPos = { pos.x,pos.y,pos.z - 1 };
 	int index = customIndex(tempPos);
-	lightPtr = unpackedLight.data() + index;
+	lightPtr = &fullWorld[index].lightLevel;
 	if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
 		blendLight(startingLight, lightPtr);
@@ -458,7 +457,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 	tempPos = { pos.x,pos.y,pos.z + 1 };
 	index = customIndex(tempPos);
-	lightPtr = unpackedLight.data() + index;
+	lightPtr = &fullWorld[index].lightLevel;
 	if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
 		blendLight(startingLight, lightPtr);
@@ -466,7 +465,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 	tempPos = { pos.x,pos.y - 1,pos.z };
 	index = customIndex(tempPos);
-	lightPtr = unpackedLight.data() + index;
+	lightPtr = &fullWorld[index].lightLevel;
 	if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
 		blendLight(startingLight, lightPtr);
@@ -474,7 +473,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 	tempPos = { pos.x,pos.y + 1,pos.z };
 	index = customIndex(tempPos);
-	lightPtr = unpackedLight.data() + index;
+	lightPtr = &fullWorld[index].lightLevel;
 	if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
 		blendLight(startingLight, lightPtr);
@@ -482,7 +481,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 	tempPos = { pos.x - 1,pos.y,pos.z };
 	index = customIndex(tempPos);
-	lightPtr = unpackedLight.data() + index;
+	lightPtr = &fullWorld[index].lightLevel;
 	if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
 		blendLight(startingLight, lightPtr);
@@ -490,7 +489,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 	tempPos = { pos.x + 1,pos.y,pos.z };
 	index = customIndex(tempPos);
-	lightPtr = unpackedLight.data() + index;
+	lightPtr = &fullWorld[index].lightLevel;
 	if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 		toVisit.push(tempPos);
 		blendLight(startingLight, lightPtr);
@@ -511,7 +510,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 		alreadyVisited.insert(blockToVisit);
 
-		startingLight = unpackedLight.data()+customIndex(blockToVisit);
+		startingLight = &fullWorld[customIndex(blockToVisit)].lightLevel;
 		if (*startingLight == ambientLight) {
 			continue;
 		}
@@ -526,7 +525,7 @@ void World::propogateLight(BlockPosition& pos) {
 		//Otherwise, spread the light!
 		tempPos = { blockToVisit.x,blockToVisit.y,blockToVisit.z - 1 };
 		index = customIndex(tempPos);
-		lightPtr = unpackedLight.data() + index;
+		lightPtr = &fullWorld[index].lightLevel;
 		if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
 			blendLight(startingLight, lightPtr);
@@ -534,7 +533,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 		tempPos = { blockToVisit.x,blockToVisit.y,blockToVisit.z + 1 };
 		index = customIndex(tempPos);
-		lightPtr = unpackedLight.data() + index;
+		lightPtr = &fullWorld[index].lightLevel;
 		if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
 			blendLight(startingLight, lightPtr);
@@ -542,7 +541,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 		tempPos = { blockToVisit.x,blockToVisit.y - 1,blockToVisit.z };
 		index = customIndex(tempPos);
-		lightPtr = unpackedLight.data() + index;
+		lightPtr = &fullWorld[index].lightLevel;
 		if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
 			blendLight(startingLight, lightPtr);
@@ -550,15 +549,15 @@ void World::propogateLight(BlockPosition& pos) {
 
 		tempPos = { blockToVisit.x,blockToVisit.y + 1,blockToVisit.z };
 		index = customIndex(tempPos);
-		lightPtr = unpackedLight.data() + index;
+		lightPtr = &fullWorld[index].lightLevel;
 		if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
-			blendLight(startingLight,lightPtr);
+			blendLight(startingLight, lightPtr);
 		}
 
 		tempPos = { blockToVisit.x - 1,blockToVisit.y,blockToVisit.z };
 		index = customIndex(tempPos);
-		lightPtr = unpackedLight.data() + index;
+		lightPtr = &fullWorld[index].lightLevel;
 		if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
 			blendLight(startingLight, lightPtr);
@@ -566,10 +565,10 @@ void World::propogateLight(BlockPosition& pos) {
 
 		tempPos = { blockToVisit.x + 1,blockToVisit.y,blockToVisit.z };
 		index = customIndex(tempPos);
-		lightPtr = unpackedLight.data() + index;
+		lightPtr = &fullWorld[index].lightLevel;
 		if (insideRenderSpace(tempPos) && fullWorld[index].type == BlockTypes::Air) {
 			toVisit.push(tempPos);
-			blendLight(startingLight,lightPtr);
+			blendLight(startingLight, lightPtr);
 		}
 
 	}
@@ -579,7 +578,7 @@ void World::propogateLight(BlockPosition& pos) {
 
 
 
-}
+	}
 
 bool emitsLight(const BlockType type) {
 	return BlockTypes::unpackedLights[type].intensity;
@@ -616,7 +615,7 @@ void World::renderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 							for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 								int largeIndex = customIndex(x + (CHUNK_LENGTH * numChunkX), z + (CHUNK_LENGTH * numChunkZ), y);
 								int index = index(x, z, y);
-								fullWorld[largeIndex] = chunk->blocks[index];
+								fullWorld[largeIndex].type = chunk->blocks[index];
 
 							}
 						}
@@ -735,7 +734,6 @@ void World::renderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 	}
 
 
-
 	//frustum cull from camera
 	if(frustumCullDirty)
 	{
@@ -806,7 +804,9 @@ void World::renderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 	{
 		lightDirty = false;
 
-		std::fill(unpackedLight.begin(), unpackedLight.end(), ambientLight);
+		for (Block &b : fullWorld) {
+			b.lightLevel = ambientLight;
+		}
 		int chunkNum = 0, numChunkX = 0, numChunkZ = 0;
 
 		int numLightsProped = 0;
@@ -831,7 +831,7 @@ void World::renderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 								auto ind = customIndex(relativePos);
 								auto block = fullWorld.data() + ind;
 								if (emitsLight(block->type)) {
-									unpackedLight[ind] = BlockTypes::unpackedLights[block->type];
+									block->lightLevel = BlockTypes::unpackedLights[block->type];
 									propogateLight(relativePos);
 								}
 							}
@@ -850,10 +850,11 @@ void World::renderThreaded(int chunkX, int chunkZ, const Frustum& camFrustum)
 
 		}
 
-		for (int i = 0; i < unpackedLight.size(); i++) {
-			packedLight[i] = World::packColor(unpackedLight[i]);
+		for (int i = 0; i < fullWorld.size(); i++) {
+			packedLight[i] = World::packColor(fullWorld[i].lightLevel);
 		}
 	}
+
 
 	//pack data into our vbo
 	if(vboDirty || alwaysRender)
@@ -1114,7 +1115,7 @@ bool World::findFirstSolid(const Ray& ray, const float& length, BlockPosition& p
 		}
 
 		auto block = chunk->indexAbsolute(curPos);
-		if (block->type != BlockTypes::Air) {
+		if (*block != BlockTypes::Air) {
 			pos = curPos;
 			return true;
 		}
@@ -1250,7 +1251,7 @@ bool World::getPlaceBlock(const Ray& ray, const float& length, BlockPosition& po
 		}
 
 		auto block = chunk->indexAbsolute(curPos);
-		if (block->type != BlockTypes::Air) {
+		if (*block != BlockTypes::Air) {
 			if (prevPos != curPos) {
 				pos = prevPos;
 				return true;
@@ -1309,7 +1310,7 @@ uint32_t World::numBlocks() {
 			for (unsigned int z = 0; z < CHUNK_LENGTH; z++) {
 				for (unsigned int y = 0; y < CHUNK_HEIGHT; y++) {
 
-					auto blockType = chunk.blocks[index(x, z, y)].type;
+					auto blockType = chunk.blocks[index(x, z, y)];
 					if (blockType == BlockTypes::Air) {
 						continue;
 					}
@@ -1331,7 +1332,7 @@ void World::removeBlock(const BlockPosition& pos) {
 		lightDirty = true;
 		vboDirty = true;
 		auto block = chunk->indexAbsolute(pos);
-		block->type = BlockTypes::Air;
+		*block = BlockTypes::Air;
 	}
 }
 

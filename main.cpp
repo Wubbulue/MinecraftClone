@@ -165,7 +165,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		if (world.findFirstSolid(ray, 30.0f, pos)) {
 			auto block = world.getBlock(pos);
-			block->type = BlockTypes::Air;
+			*block = BlockTypes::Air;
 			world.renderBlocksDirty = true;
 			world.frustumCullDirty = true;
 			world.lightDirty = true;
@@ -184,7 +184,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		if (world.getPlaceBlock(ray, 30.0f, pos)) {
 			auto block = world.getBlock(pos);
-			block->type = blockToPlace;
+			*block = blockToPlace;
 			world.renderBlocksDirty = true;
 			world.frustumCullDirty = true;
 			world.lightDirty = true;
@@ -594,7 +594,7 @@ int main()
 			ImGui::Text("Ambient light level: %d    (Change with up and down arrow)", world.ambientLight.intensity);
 			if (player.isLookingAtBlock) {
 				auto b = player.blockLookingAt;
-				std::string blockTypeString = BlockTypes::blockTypeToString(world.getBlock(b)->type);
+				std::string blockTypeString = BlockTypes::blockTypeToString(*world.getBlock(b));
 				ImGui::Text("Player is looking at %s in position %d,%d,%d", blockTypeString.c_str(), b.x, b.y, b.z);
 			}
 			else {

@@ -207,8 +207,7 @@ struct colorUnpacked{
 	uint8_t blue;
 	uint8_t intensity;
 
-	bool operator==(const colorUnpacked& r)
-	{
+	bool operator==(const colorUnpacked& r) const {
 
 		return red == r.red && green == r.green && blue == r.blue && intensity == r.intensity;
 	}
@@ -241,6 +240,16 @@ const uint8_t* getFacesArray(const BlockType type);
 
 struct Block {
 	BlockType type = BlockTypes::Air;
+	bool isPlayerLookingAt = false;
+	colorUnpacked lightLevel = BlockTypes::noLight;
+
+	bool operator==(const Block& rhs) const {
+		return type == rhs.type && isPlayerLookingAt == rhs.isPlayerLookingAt && lightLevel==rhs.lightLevel;
+	}
+
+	bool operator!=(const Block& rhs) const {
+		return !(*this == rhs); // Reuses the operator==
+	}
 };
 
 const int chunkDataOffset = CHUNK_HEIGHT * CHUNK_LENGTH * CHUNK_LENGTH * sizeof(Block);
@@ -286,10 +295,10 @@ public:
 
 
 	//Actual set of blocks within the chunk
-	std::vector<Block> blocks;
+	std::vector<BlockType> blocks;
 
 	//this function returns a block given a block position that is global
-	Block* indexAbsolute(BlockPosition pos);
+	BlockType* indexAbsolute(BlockPosition pos);
 
 	Chunk(int inX, int inZ) : x(inX), z(inZ) {
 		//Allocate memory for our block buffer upopn construction
@@ -362,7 +371,6 @@ public:
 		fullWorld.resize(CHUNK_HEIGHT * renderSpaceSideLength * renderSpaceSideLength);
 		airCulled.resize(fullWorld.size());
 		fullCulled.resize(fullWorld.size());
-		unpackedLight = std::vector<colorUnpacked>(fullWorld.size(),ambientLight);
 		packedLight = std::vector<colorPacked>(fullWorld.size(),0);
 
 		//TODO: i don't really know how big this buffer needs to be, this is a guess...
@@ -410,7 +418,7 @@ public:
 
 	//this function tries to find a block within the world given a block position
 	//Returns nullptr if it can't find it
-	Block* getBlock(const BlockPosition& pos);
+	BlockType* getBlock(const BlockPosition& pos);
 
 	//gets chunk from chunk 
 	//returns nullptr if it can't find chunk
@@ -458,7 +466,6 @@ public:
 
 
 	//ranges from 0 to 15
-	std::vector<colorUnpacked> unpackedLight = { {1,0,0,0} };
 	std::vector<colorPacked> packedLight = {0};
 
 	colorUnpacked ambientLight = { 15,15,15,5 };
